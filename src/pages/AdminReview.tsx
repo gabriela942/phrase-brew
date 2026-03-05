@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCategories } from "@/lib/hooks";
 import { toast } from "sonner";
-import { ArrowLeft, Check, X, Save } from "lucide-react";
+import { ArrowLeft, Check, X, Save, RefreshCw } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type TemplateType = Database["public"]["Enums"]["template_type"];
@@ -143,6 +143,19 @@ const AdminReview = () => {
     enabled: !!id,
   });
 
+  const { data: existingTemplate } = useQuery({
+    queryKey: ["existing-template", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("templates")
+        .select("id")
+        .eq("submission_id", id!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+  });
+
   const [form, setForm] = useState({
     title: "",
     template_type: "email" as TemplateType,
@@ -200,6 +213,19 @@ const AdminReview = () => {
     }
   }, [submission, categories]);
 
+  const templatePayload = {
+    title: form.title || form.brand || form.template_type,
+    template_type: form.template_type,
+    content: form.content,
+    category_id: form.category_id || null,
+    tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+    tone: (form.tone as ToneType) || null,
+    persona: form.persona || null,
+    variables: form.variables ? form.variables.split(",").map((v) => v.trim()).filter(Boolean) : [],
+    brand: form.brand || null,
+    market_type: form.market_type || null,
+  };
+
   const handleApprove = async () => {
     if (!form.content) {
       toast.error("Conteúdo é obrigatório.");
@@ -207,20 +233,10 @@ const AdminReview = () => {
     }
 
     const { error: templateError } = await supabase.from("templates").insert({
-      title: form.title || form.brand || form.template_type,
-      
-      template_type: form.template_type,
-      content: form.content,
-      category_id: form.category_id || null,
-      tags: form.tags ? form.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
-      tone: (form.tone as ToneType) || null,
-      persona: form.persona || null,
-      variables: form.variables ? form.variables.split(",").map((v) => v.trim()).filter(Boolean) : [],
+      ...templatePayload,
       submission_id: id,
       status: "published",
       published_at: new Date().toISOString(),
-      brand: form.brand || null,
-      market_type: form.market_type || null,
     });
 
     if (templateError) {
@@ -232,6 +248,31 @@ const AdminReview = () => {
     queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
     queryClient.invalidateQueries({ queryKey: ["templates"] });
     toast.success("Template aprovado e publicado!");
+    navigate("/admin");
+  };
+
+  const handleUpdate = async () => {
+    if (!existingTemplate?.id) return;
+    if (!form.content) {
+      toast.error("Conteúdo é obrigatório.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("templates")
+      .update({ ...templatePayload, updated_at: new Date().toISOString() })
+      .eq("id", existingTemplate.id);
+
+    if (error) {
+      toast.error("Erro ao atualizar template.");
+      return;
+    }
+
+    await supabase.from("submissions").update({ status: "approved", notes: form.notes }).eq("id", id!);
+    queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+    queryClient.invalidateQueries({ queryKey: ["templates"] });
+    queryClient.invalidateQueries({ queryKey: ["existing-template", id] });
+    toast.success("Template atualizado!");
     navigate("/admin");
   };
 
@@ -468,9 +509,15 @@ const AdminReview = () => {
             </div>
 
             <div className="flex flex-col gap-2">
-              <Button variant="hero" size="lg" onClick={handleApprove}>
-                <Check className="h-4 w-4 mr-2" /> Aprovar e Publicar
-              </Button>
+              {existingTemplate ? (
+                <Button variant="hero" size="lg" onClick={handleUpdate}>
+                  <RefreshCw className="h-4 w-4 mr-2" /> Atualizar Template
+                </Button>
+              ) : (
+                <Button variant="hero" size="lg" onClick={handleApprove}>
+                  <Check className="h-4 w-4 mr-2" /> Aprovar e Publicar
+                </Button>
+              )}
               <Button variant="outline" onClick={handleSaveDraft}>
                 <Save className="h-4 w-4 mr-2" /> Salvar como Rascunho
               </Button>
