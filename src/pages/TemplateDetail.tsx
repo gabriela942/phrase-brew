@@ -64,6 +64,12 @@ const TemplateDetail = () => {
                   {cat.icon} {cat.name}
                 </span>
               )}
+              {template.brand && (
+                <span className="text-sm font-medium text-primary">{template.brand}</span>
+              )}
+              {template.market_type && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{template.market_type}</span>
+              )}
               {template.tone && (
                 <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">
                   {template.tone}

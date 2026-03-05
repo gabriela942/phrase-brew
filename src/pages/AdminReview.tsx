@@ -48,6 +48,8 @@ const AdminReview = () => {
     persona: "",
     variables: "",
     notes: "",
+    brand: "",
+    market_type: "",
   });
 
   const [checklist, setChecklist] = useState({
@@ -69,6 +71,8 @@ const AdminReview = () => {
         persona: "",
         variables: "",
         notes: submission.notes || "",
+        brand: submission.brand || "",
+        market_type: submission.market_type || "",
       });
     }
   }, [submission]);
@@ -79,7 +83,6 @@ const AdminReview = () => {
       return;
     }
 
-    // Create template
     const { error: templateError } = await supabase.from("templates").insert({
       title: form.title,
       template_type: form.template_type,
@@ -92,6 +95,8 @@ const AdminReview = () => {
       submission_id: id,
       status: "published",
       published_at: new Date().toISOString(),
+      brand: form.brand || null,
+      market_type: form.market_type || null,
     });
 
     if (templateError) {
@@ -99,7 +104,6 @@ const AdminReview = () => {
       return;
     }
 
-    // Update submission status
     await supabase.from("submissions").update({ status: "approved", notes: form.notes }).eq("id", id!);
     
     queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
@@ -156,13 +160,14 @@ const AdminReview = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Tipo</Label>
+                <Label>Tipo de Comunicação</Label>
                 <Select value={form.template_type} onValueChange={(v: any) => setForm({ ...form, template_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="email">Email</SelectItem>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                    <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="email">📧 Email</SelectItem>
+                    <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                    <SelectItem value="sms">📱 SMS</SelectItem>
+                    <SelectItem value="push">🔔 Push</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -187,6 +192,17 @@ const AdminReview = () => {
             <div className="space-y-2">
               <Label>Conteúdo</Label>
               <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Marca / Enviador</Label>
+                <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Ex: Nubank, iFood" />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de Mercado</Label>
+                <Input value={form.market_type} onChange={(e) => setForm({ ...form, market_type: e.target.value })} placeholder="Ex: Fintech, E-commerce, SaaS" />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -237,8 +253,10 @@ const AdminReview = () => {
           <div className="space-y-6">
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4">
               <h2 className="font-display text-xl font-bold text-card-foreground">Preview</h2>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap items-center">
                 <TypeBadge type={form.template_type} />
+                {form.brand && <span className="text-sm font-medium text-primary">{form.brand}</span>}
+                {form.market_type && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{form.market_type}</span>}
               </div>
               <h3 className="font-display font-semibold text-lg text-card-foreground">{form.title || "Sem título"}</h3>
               <div className="bg-muted/50 rounded-xl p-4 border">
