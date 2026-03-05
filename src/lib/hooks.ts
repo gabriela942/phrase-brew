@@ -29,7 +29,7 @@ export function usePublishedTemplates(filters?: {
         .eq("status", "published")
         .order("published_at", { ascending: false });
 
-      if (filters?.type && (filters.type === "email" || filters.type === "whatsapp" || filters.type === "sms")) {
+      if (filters?.type && (filters.type === "email" || filters.type === "whatsapp" || filters.type === "sms" || filters.type === "push")) {
         query = query.eq("template_type", filters.type);
       }
       if (filters?.categoryId) {

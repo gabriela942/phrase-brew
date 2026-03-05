@@ -10,13 +10,14 @@ interface TemplateCardProps {
   id: string;
   title: string;
   content: string;
-  template_type: "email" | "whatsapp" | "sms";
+  template_type: "email" | "whatsapp" | "sms" | "push";
   copies_count: number;
   tags?: string[] | null;
+  brand?: string | null;
   categories?: { name: string; icon: string | null } | null;
 }
 
-export function TemplateCard({ id, title, content, template_type, copies_count, tags, categories }: TemplateCardProps) {
+export function TemplateCard({ id, title, content, template_type, copies_count, tags, brand, categories }: TemplateCardProps) {
   const navigate = useNavigate();
 
   const handleCopy = async (e: React.MouseEvent) => {
@@ -45,6 +46,9 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
           )}
         </div>
         <h3 className="font-display font-semibold text-card-foreground line-clamp-2 leading-tight">{title}</h3>
+        {brand && (
+          <span className="text-xs font-medium text-primary">{brand}</span>
+        )}
         <p className="text-sm text-muted-foreground line-clamp-3 font-body">{content}</p>
         {tags && tags.length > 0 && (
           <div className="flex flex-wrap gap-1">

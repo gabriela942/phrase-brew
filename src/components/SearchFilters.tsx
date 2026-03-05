@@ -1,4 +1,4 @@
-import { Search, Mail, MessageCircle, Smartphone, X } from "lucide-react";
+import { Search, Mail, MessageCircle, Smartphone, Bell, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -37,6 +37,7 @@ export function SearchFilters({
             { value: "email", label: "Email", icon: Mail },
             { value: "whatsapp", label: "WhatsApp", icon: MessageCircle },
             { value: "sms", label: "SMS", icon: Smartphone },
+            { value: "push", label: "Push", icon: Bell },
           ].map((t) => (
             <Button
               key={t.value}

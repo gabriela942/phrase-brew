@@ -10,7 +10,10 @@ import { useCategories } from "@/lib/hooks";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Send } from "lucide-react";
+import { Send, Mail, ArrowLeft } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+
+type TemplateType = Database["public"]["Enums"]["template_type"];
 
 const SubmitTemplate = () => {
   const navigate = useNavigate();
@@ -18,11 +21,12 @@ const SubmitTemplate = () => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: "",
-    template_type: "email" as "email" | "whatsapp" | "sms",
+    template_type: "email" as TemplateType,
     content: "",
     suggested_category: "",
     suggested_tags: "",
     segment: "",
+    brand: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,6 +45,7 @@ const SubmitTemplate = () => {
       suggested_category: form.suggested_category || null,
       suggested_tags: form.suggested_tags ? form.suggested_tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
       segment: form.segment || null,
+      brand: form.brand.trim() || null,
       status: "new",
     });
     setLoading(false);
@@ -61,9 +66,22 @@ const SubmitTemplate = () => {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+          </Button>
+
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Enviar Modelo</h1>
             <p className="text-muted-foreground mt-1">Contribua com um template para a comunidade.</p>
+          </div>
+
+          {/* Quick tip about email */}
+          <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-start gap-3">
+            <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Dica rápida:</strong> Você também pode encaminhar a mensagem diretamente para{" "}
+              <code className="text-primary font-mono font-semibold">modelscrm@gmail.com</code> — é ainda mais fácil!
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="bg-card rounded-2xl border shadow-card p-6 md:p-8 space-y-5">
@@ -76,6 +94,7 @@ const SubmitTemplate = () => {
                     <SelectItem value="email">📧 Email</SelectItem>
                     <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
                     <SelectItem value="sms">📱 SMS</SelectItem>
+                    <SelectItem value="push">🔔 Push</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -92,13 +111,23 @@ const SubmitTemplate = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Título do modelo *</Label>
-              <Input
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Ex: Email de boas-vindas para novo cliente"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Título do modelo *</Label>
+                <Input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Ex: Email de boas-vindas para novo cliente"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Marca / Enviador</Label>
+                <Input
+                  value={form.brand}
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  placeholder="Ex: Nubank, iFood, Magazine Luiza"
+                />
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -121,11 +150,11 @@ const SubmitTemplate = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Segmento</Label>
+                <Label>Segmento / Mercado</Label>
                 <Input
                   value={form.segment}
                   onChange={(e) => setForm({ ...form, segment: e.target.value })}
-                  placeholder="Ex: e-commerce, SaaS"
+                  placeholder="Ex: e-commerce, SaaS, fintech"
                 />
               </div>
             </div>

@@ -51,9 +51,11 @@ export type Database = {
       }
       submissions: {
         Row: {
+          brand: string | null
           created_at: string
           id: string
           language: string
+          market_type: string | null
           notes: string | null
           parsed_body: string | null
           quality_score: number | null
@@ -71,9 +73,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          brand?: string | null
           created_at?: string
           id?: string
           language?: string
+          market_type?: string | null
           notes?: string | null
           parsed_body?: string | null
           quality_score?: number | null
@@ -91,9 +95,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          brand?: string | null
           created_at?: string
           id?: string
           language?: string
+          market_type?: string | null
           notes?: string | null
           parsed_body?: string | null
           quality_score?: number | null
@@ -114,6 +120,7 @@ export type Database = {
       }
       templates: {
         Row: {
+          brand: string | null
           category_id: string | null
           content: string
           copies_count: number
@@ -122,6 +129,7 @@ export type Database = {
           featured: boolean
           id: string
           language: string
+          market_type: string | null
           persona: string | null
           published_at: string | null
           segment: string | null
@@ -135,6 +143,7 @@ export type Database = {
           variables: string[] | null
         }
         Insert: {
+          brand?: string | null
           category_id?: string | null
           content: string
           copies_count?: number
@@ -143,6 +152,7 @@ export type Database = {
           featured?: boolean
           id?: string
           language?: string
+          market_type?: string | null
           persona?: string | null
           published_at?: string | null
           segment?: string | null
@@ -156,6 +166,7 @@ export type Database = {
           variables?: string[] | null
         }
         Update: {
+          brand?: string | null
           category_id?: string | null
           content?: string
           copies_count?: number
@@ -164,6 +175,7 @@ export type Database = {
           featured?: boolean
           id?: string
           language?: string
+          market_type?: string | null
           persona?: string | null
           published_at?: string | null
           segment?: string | null
@@ -232,7 +244,7 @@ export type Database = {
       app_role: "admin" | "moderator" | "contributor" | "user"
       submission_status: "new" | "in_review" | "approved" | "rejected"
       template_status: "published" | "draft" | "archived"
-      template_type: "email" | "whatsapp" | "sms"
+      template_type: "email" | "whatsapp" | "sms" | "push"
       tone_type: "formal" | "casual" | "direct" | "friendly" | "urgent"
     }
     CompositeTypes: {
@@ -364,7 +376,7 @@ export const Constants = {
       app_role: ["admin", "moderator", "contributor", "user"],
       submission_status: ["new", "in_review", "approved", "rejected"],
       template_status: ["published", "draft", "archived"],
-      template_type: ["email", "whatsapp", "sms"],
+      template_type: ["email", "whatsapp", "sms", "push"],
       tone_type: ["formal", "casual", "direct", "friendly", "urgent"],
     },
   },
