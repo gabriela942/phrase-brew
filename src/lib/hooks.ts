@@ -19,6 +19,8 @@ export function usePublishedTemplates(filters?: {
   type?: string;
   categoryId?: string;
   search?: string;
+  marketType?: string;
+  segment?: string;
 }) {
   return useQuery({
     queryKey: ["templates", "published", filters],
@@ -34,6 +36,12 @@ export function usePublishedTemplates(filters?: {
       }
       if (filters?.categoryId) {
         query = query.eq("category_id", filters.categoryId);
+      }
+      if (filters?.marketType) {
+        query = query.eq("market_type", filters.marketType);
+      }
+      if (filters?.segment) {
+        query = query.eq("segment", filters.segment);
       }
       if (filters?.search) {
         query = query.or(
@@ -60,6 +68,24 @@ export function useTemplate(id: string) {
       return data;
     },
     enabled: !!id,
+  });
+}
+
+export function useDistinctFilterValues() {
+  return useQuery({
+    queryKey: ["filter-values"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("templates")
+        .select("market_type, segment")
+        .eq("status", "published");
+      if (error) throw error;
+      
+      const marketTypes = [...new Set(data?.map(t => t.market_type).filter(Boolean) as string[])].sort();
+      const segments = [...new Set(data?.map(t => t.segment).filter(Boolean) as string[])].sort();
+      
+      return { marketTypes, segments };
+    },
   });
 }
 

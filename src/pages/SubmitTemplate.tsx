@@ -21,7 +21,7 @@ const SubmitTemplate = () => {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     title: "",
-    template_type: "email" as TemplateType,
+    template_type: "whatsapp" as TemplateType,
     content: "",
     suggested_category: "",
     suggested_tags: "",
@@ -72,15 +72,15 @@ const SubmitTemplate = () => {
 
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">Enviar Modelo</h1>
-            <p className="text-muted-foreground mt-1">Contribua com um template para a comunidade.</p>
+            <p className="text-muted-foreground mt-1">Envie um print de WhatsApp, SMS ou Push para a comunidade. Para emails, encaminhe diretamente para modelscrm@gmail.com.</p>
           </div>
 
           {/* Quick tip about email */}
           <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-start gap-3">
             <Mail className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Dica rápida:</strong> Você também pode encaminhar a mensagem diretamente para{" "}
-              <code className="text-primary font-mono font-semibold">modelscrm@gmail.com</code> — é ainda mais fácil!
+              <strong className="text-foreground">📧 Para emails:</strong> Encaminhe diretamente para{" "}
+              <code className="text-primary font-mono font-semibold">modelscrm@gmail.com</code> — preservamos o visual original com imagens e layout.
             </p>
           </div>
 
@@ -91,7 +91,6 @@ const SubmitTemplate = () => {
                 <Select value={form.template_type} onValueChange={(v: any) => setForm({ ...form, template_type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="email">📧 Email</SelectItem>
                     <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
                     <SelectItem value="sms">📱 SMS</SelectItem>
                     <SelectItem value="push">🔔 Push</SelectItem>

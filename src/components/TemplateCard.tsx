@@ -1,10 +1,10 @@
-import { Copy, Eye } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Copy, Heart } from "lucide-react";
 import { TypeBadge } from "@/components/TypeBadge";
 import { incrementCopyCount } from "@/lib/hooks";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useRef } from "react";
 
 interface TemplateCardProps {
   id: string;
@@ -15,17 +15,24 @@ interface TemplateCardProps {
   tags?: string[] | null;
   brand?: string | null;
   categories?: { name: string; icon: string | null } | null;
+  published_at?: string | null;
 }
 
-export function TemplateCard({ id, title, content, template_type, copies_count, tags, brand, categories }: TemplateCardProps) {
+export function TemplateCard({ id, title, content, template_type, copies_count, tags, brand, categories, published_at }: TemplateCardProps) {
   const navigate = useNavigate();
+  const isHtml = /<[^>]+>/.test(content);
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await navigator.clipboard.writeText(content);
+    const text = isHtml ? content.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim() : content;
+    await navigator.clipboard.writeText(text);
     await incrementCopyCount(id);
     toast.success("Copiado!");
   };
+
+  const formattedDate = published_at
+    ? new Date(published_at).toLocaleDateString("pt-BR", { month: "short", day: "numeric", year: "numeric" })
+    : null;
 
   return (
     <motion.div
@@ -33,44 +40,50 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -4 }}
       transition={{ duration: 0.2 }}
-      className="group relative bg-card rounded-xl border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer overflow-hidden"
+      className="group relative bg-card rounded-xl border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer overflow-hidden flex flex-col"
       onClick={() => navigate(`/template/${id}`)}
     >
-      <div className="p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <TypeBadge type={template_type} />
-          {categories && (
-            <span className="text-xs text-muted-foreground">
-              {categories.icon} {categories.name}
-            </span>
-          )}
+      {/* Email visual preview */}
+      {isHtml ? (
+        <div className="relative w-full h-[280px] overflow-hidden border-b bg-background">
+          <iframe
+            title={title}
+            sandbox=""
+            srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;padding:0;width:100%;pointer-events:none;overflow:hidden;}img{max-width:100%;height:auto;}table{max-width:100%!important;}*{box-sizing:border-box;}</style></head><body>${content}</body></html>`}
+            className="w-full h-full border-0 pointer-events-none"
+            style={{ transform: "scale(0.5)", transformOrigin: "top left", width: "200%", height: "200%" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/80" />
         </div>
-        <h3 className="font-display font-semibold text-card-foreground line-clamp-2 leading-tight">{title}</h3>
+      ) : (
+        <div className="p-5 pb-3">
+          <p className="text-sm text-muted-foreground line-clamp-4 font-body">{content}</p>
+        </div>
+      )}
+
+      {/* Card footer */}
+      <div className="p-4 pt-3 mt-auto space-y-2">
         {brand && (
-          <span className="text-xs font-medium text-primary">{brand}</span>
+          <h3 className="font-display font-semibold text-card-foreground text-base leading-tight">{brand}</h3>
         )}
-        <p className="text-sm text-muted-foreground line-clamp-3 font-body">{content}</p>
-        {tags && tags.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                {tag}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            {formattedDate && (
+              <span className="text-xs text-muted-foreground">{formattedDate}</span>
+            )}
+            {categories && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                {categories.name}
               </span>
-            ))}
+            )}
+            <TypeBadge type={template_type} />
           </div>
-        )}
-        <div className="flex items-center justify-between pt-2 border-t">
-          <span className="text-xs text-muted-foreground flex items-center gap-1">
-            <Copy className="h-3 w-3" /> {copies_count} cópias
-          </span>
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); navigate(`/template/${id}`); }}>
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button size="sm" variant="default" onClick={handleCopy}>
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
+          >
+            <Heart className="h-3.5 w-3.5 fill-current" /> {copies_count}
+          </button>
         </div>
       </div>
     </motion.div>
