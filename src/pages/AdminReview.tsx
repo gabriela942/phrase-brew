@@ -425,8 +425,12 @@ const AdminReview = () => {
                 {form.brand && <span className="text-sm font-medium text-primary">{form.brand}</span>}
                 {form.market_type && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{form.market_type}</span>}
               </div>
-              <h3 className="font-display font-semibold text-lg text-card-foreground">{form.title || "Sem título"}</h3>
-              {/<[^>]+>/.test(form.content) ? (
+              {!isNonEmail && <h3 className="font-display font-semibold text-lg text-card-foreground">{form.title || "Sem título"}</h3>}
+              {isSubmissionImage ? (
+                <div className="rounded-xl border bg-muted overflow-hidden">
+                  <img src={submission.raw_body!} alt="Preview do template" className="w-full object-contain max-h-[60vh]" />
+                </div>
+              ) : /<[^>]+>/.test(form.content) ? (
                 <div className="rounded-xl border bg-background overflow-hidden">
                   <iframe
                     title="Preview do template"
