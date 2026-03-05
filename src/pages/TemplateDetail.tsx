@@ -7,21 +7,30 @@ import { ArrowLeft, Copy, Calendar, Tag, Download } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
+function stripHtmlToText(html: string): string {
+  return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
+}
+
 const TemplateDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: template, isLoading } = useTemplate(id!);
 
-  const handleCopy = async () => {
+  const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
+
+  const handleCopyText = async () => {
     if (!template) return;
-    await navigator.clipboard.writeText(template.content);
+    const text = isHtml ? stripHtmlToText(template.content) : template.content;
+    await navigator.clipboard.writeText(text);
     await incrementCopyCount(template.id);
     toast.success("Texto copiado!");
   };
 
   const handleDownloadHtml = () => {
     if (!template) return;
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.title}</title></head><body><pre style="white-space:pre-wrap;font-family:sans-serif;">${template.content}</pre></body></html>`;
+    const html = isHtml
+      ? template.content
+      : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.title}</title></head><body><pre style="white-space:pre-wrap;font-family:sans-serif;">${template.content}</pre></body></html>`;
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -59,7 +68,7 @@ const TemplateDetail = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container py-8 max-w-4xl">
+      <div className="container py-8 max-w-5xl">
         <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
@@ -92,18 +101,33 @@ const TemplateDetail = () => {
 
             <h1 className="font-display text-2xl md:text-3xl font-bold text-card-foreground">{template.title}</h1>
 
-            <div className="relative bg-muted/50 rounded-xl p-6 border">
-              <pre className="whitespace-pre-wrap font-body text-sm text-foreground leading-relaxed">
-                {template.content}
-              </pre>
-              <div className="flex gap-2 mt-4">
-                <Button size="lg" variant="hero" onClick={handleCopy}>
-                  <Copy className="h-4 w-4 mr-2" /> Copiar Texto
-                </Button>
-                <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
-                  <Download className="h-4 w-4 mr-2" /> Baixar HTML
-                </Button>
+            {/* Email visual */}
+            {isHtml ? (
+              <div className="rounded-xl border bg-background overflow-hidden">
+                <iframe
+                  title="Visual do template"
+                  sandbox="allow-popups allow-popups-to-escape-sandbox"
+                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;padding:0;width:100%;}img{max-width:100%;height:auto;}table{max-width:100%!important;}*{box-sizing:border-box;}</style></head><body>${template.content}</body></html>`}
+                  className="w-full border-0"
+                  style={{ minHeight: "700px" }}
+                />
               </div>
+            ) : (
+              <div className="bg-muted/50 rounded-xl p-6 border">
+                <pre className="whitespace-pre-wrap font-body text-sm text-foreground leading-relaxed">
+                  {template.content}
+                </pre>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2">
+              <Button size="lg" variant="hero" onClick={handleCopyText}>
+                <Copy className="h-4 w-4 mr-2" /> Copiar Texto
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
+                <Download className="h-4 w-4 mr-2" /> Baixar HTML
+              </Button>
             </div>
 
             {template.variables && template.variables.length > 0 && (
