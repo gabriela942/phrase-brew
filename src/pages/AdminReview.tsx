@@ -26,6 +26,21 @@ function extractBrandFromSender(rawFrom: string | null): string {
   return emailMatch ? emailMatch[1].trim() : rawFrom;
 }
 
+/** Extract the original sender from forwarded message HTML */
+function extractOriginalSender(html: string): string {
+  // Look for "De: <strong>Name</strong>" pattern in gmail_attr
+  const match = html.match(/De:\s*<strong[^>]*>([^<]+)<\/strong>/i);
+  if (match) return match[1].trim();
+  // Fallback: "From: Name" in plain text
+  const plainMatch = html.match(/(?:From|De)\s*:\s*([^\n<]+)/i);
+  if (plainMatch) return plainMatch[1].replace(/<[^>]*>/g, "").replace(/[<>]/g, "").trim();
+  return "";
+}
+
+function cleanTitle(title: string): string {
+  return title.replace(/^(Fwd|Fw|Re|Enc|Res)\s*:\s*/gi, "").trim();
+}
+
 interface CategoryOption { id: string; name: string; slug: string; icon: string | null }
 
 function guessCategoryFromContent(content: string, subject: string, categories: CategoryOption[]): string {
@@ -151,11 +166,16 @@ const AdminReview = () => {
 
   useEffect(() => {
     if (submission) {
-      const brand = extractBrandFromSender(submission.raw_from) || submission.brand || "";
       const htmlContent = submission.parsed_body || "";
       const rawText = submission.raw_body || "";
+      
+      // Extract brand from the original sender inside forwarded message, not the forwarder
+      const originalSender = extractOriginalSender(htmlContent);
+      const brand = originalSender || extractBrandFromSender(submission.raw_from) || submission.brand || "";
+      
       const textForAnalysis = rawText || stripHtml(htmlContent);
-      const subject = submission.raw_subject || "";
+      const rawSubject = submission.raw_subject || "";
+      const subject = cleanTitle(rawSubject);
       const guessed = guessFieldsFromContent(textForAnalysis, subject);
       const guessedCategory = guessCategoryFromContent(textForAnalysis, subject, (categories || []) as CategoryOption[]);
 
@@ -163,7 +183,7 @@ const AdminReview = () => {
       const content = htmlContent ? sanitizeEmailHtml(htmlContent) : rawText;
 
       setForm({
-        title: submission.title || submission.raw_subject || "",
+        title: cleanTitle(submission.title || rawSubject),
         template_type: submission.template_type,
         content,
         category_id: guessedCategory,
@@ -390,11 +410,23 @@ const AdminReview = () => {
                 {form.market_type && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{form.market_type}</span>}
               </div>
               <h3 className="font-display font-semibold text-lg text-card-foreground">{form.title || "Sem título"}</h3>
-              <div className="bg-muted/50 rounded-xl p-4 border max-h-60 overflow-y-auto">
-                <pre className="whitespace-pre-wrap text-sm text-foreground font-body leading-relaxed">
-                  {form.content || "Sem conteúdo"}
-                </pre>
-              </div>
+              {/<[^>]+>/.test(form.content) ? (
+                <div className="rounded-xl border bg-background overflow-hidden">
+                  <iframe
+                    title="Preview do template"
+                    sandbox="allow-popups allow-popups-to-escape-sandbox"
+                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;padding:0;width:100%;}img{max-width:100%;height:auto;}table{max-width:100%!important;}*{box-sizing:border-box;}</style></head><body>${form.content}</body></html>`}
+                    className="w-full border-0"
+                    style={{ minHeight: "500px" }}
+                  />
+                </div>
+              ) : (
+                <div className="bg-muted/50 rounded-xl p-4 border max-h-60 overflow-y-auto">
+                  <pre className="whitespace-pre-wrap text-sm text-foreground font-body leading-relaxed">
+                    {form.content || "Sem conteúdo"}
+                  </pre>
+                </div>
+              )}
             </div>
 
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-3">
