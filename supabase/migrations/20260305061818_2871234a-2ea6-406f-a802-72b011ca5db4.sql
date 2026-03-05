@@ -1,0 +1,2 @@
+ALTER TABLE public.submissions DROP CONSTRAINT submissions_source_check;
+ALTER TABLE public.submissions ADD CONSTRAINT submissions_source_check CHECK (source = ANY (ARRAY['email'::text, 'form'::text, 'gmail'::text]));
