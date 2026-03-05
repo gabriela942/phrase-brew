@@ -13,17 +13,15 @@ interface SearchFiltersProps {
   onCategoryChange: (v: string) => void;
   marketFilter: string;
   onMarketChange: (v: string) => void;
-  segmentFilter: string;
-  onSegmentChange: (v: string) => void;
 }
 
 export function SearchFilters({
   search, onSearchChange, typeFilter, onTypeChange, categoryFilter, onCategoryChange,
-  marketFilter, onMarketChange, segmentFilter, onSegmentChange,
+  marketFilter, onMarketChange,
 }: SearchFiltersProps) {
   const { data: categories } = useCategories();
   const { data: filterValues } = useDistinctFilterValues();
-  const hasFilters = search || typeFilter || categoryFilter || marketFilter || segmentFilter;
+  const hasFilters = search || typeFilter || categoryFilter || marketFilter;
 
   return (
     <div className="space-y-3">
@@ -80,19 +78,8 @@ export function SearchFilters({
             ))}
           </SelectContent>
         </Select>
-        <Select value={segmentFilter} onValueChange={onSegmentChange}>
-          <SelectTrigger className="w-[160px] h-9">
-            <SelectValue placeholder="Segmento" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos segmentos</SelectItem>
-            {filterValues?.segments?.map((s) => (
-              <SelectItem key={s} value={s}>{s}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { onSearchChange(""); onTypeChange(""); onCategoryChange(""); onMarketChange(""); onSegmentChange(""); }}>
+          <Button variant="ghost" size="sm" onClick={() => { onSearchChange(""); onTypeChange(""); onCategoryChange(""); onMarketChange(""); }}>
             <X className="h-3.5 w-3.5 mr-1" /> Limpar
           </Button>
         )}

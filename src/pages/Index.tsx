@@ -15,7 +15,7 @@ const Index = () => {
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [marketFilter, setMarketFilter] = useState("");
-  const [segmentFilter, setSegmentFilter] = useState("");
+  
   const [page, setPage] = useState(1);
 
   const { data: templates, isLoading } = usePublishedTemplates({
@@ -23,7 +23,7 @@ const Index = () => {
     type: typeFilter || undefined,
     categoryId: categoryFilter && categoryFilter !== "all" ? categoryFilter : undefined,
     marketType: marketFilter || undefined,
-    segment: segmentFilter || undefined,
+    
   });
 
   const totalPages = templates ? Math.ceil(templates.length / TEMPLATES_PER_PAGE) : 1;
@@ -72,8 +72,6 @@ const Index = () => {
           onCategoryChange={handleFilterChange(setCategoryFilter)}
           marketFilter={marketFilter}
           onMarketChange={handleFilterChange(setMarketFilter)}
-          segmentFilter={segmentFilter}
-          onSegmentChange={handleFilterChange(setSegmentFilter)}
         />
 
         {isLoading ? (
