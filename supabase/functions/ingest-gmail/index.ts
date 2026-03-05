@@ -34,14 +34,17 @@ async function getAccessToken(): Promise<string> {
 interface GmailMessage {
   id: string;
   payload: {
+    mimeType?: string;
     headers: Array<{ name: string; value: string }>;
     body?: { data?: string };
-    parts?: Array<{
-      mimeType: string;
-      body?: { data?: string };
-      parts?: Array<{ mimeType: string; body?: { data?: string } }>;
-    }>;
+    parts?: GmailPart[];
   };
+}
+
+interface GmailPart {
+  mimeType: string;
+  body?: { data?: string };
+  parts?: GmailPart[];
 }
 
 function getHeader(msg: GmailMessage, name: string): string | null {
@@ -61,43 +64,42 @@ function decodeBase64Url(data: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-function extractBody(msg: GmailMessage): string {
-  // Try to get text/plain or text/html from parts
-  if (msg.payload.parts) {
-    for (const part of msg.payload.parts) {
-      if (part.mimeType === "text/plain" && part.body?.data) {
-        return decodeBase64Url(part.body.data);
-      }
-      // Check nested parts (multipart/alternative inside multipart/mixed)
-      if (part.parts) {
-        for (const subPart of part.parts) {
-          if (subPart.mimeType === "text/plain" && subPart.body?.data) {
-            return decodeBase64Url(subPart.body.data);
-          }
-        }
-      }
+function collectBodiesFromParts(parts: GmailPart[], acc: { text: string; html: string }) {
+  for (const part of parts) {
+    if (part.mimeType === "text/plain" && part.body?.data && !acc.text) {
+      acc.text = decodeBase64Url(part.body.data);
     }
-    // Fallback to HTML if no plain text
-    for (const part of msg.payload.parts) {
-      if (part.mimeType === "text/html" && part.body?.data) {
-        return decodeBase64Url(part.body.data);
-      }
-      if (part.parts) {
-        for (const subPart of part.parts) {
-          if (subPart.mimeType === "text/html" && subPart.body?.data) {
-            return decodeBase64Url(subPart.body.data);
-          }
-        }
-      }
+
+    if (part.mimeType === "text/html" && part.body?.data && !acc.html) {
+      acc.html = decodeBase64Url(part.body.data);
+    }
+
+    if (part.parts?.length) {
+      collectBodiesFromParts(part.parts, acc);
     }
   }
+}
 
-  // Single-part message
-  if (msg.payload.body?.data) {
-    return decodeBase64Url(msg.payload.body.data);
+function extractBodies(msg: GmailMessage): { text: string; html: string } {
+  const extracted = { text: "", html: "" };
+
+  if (msg.payload.parts?.length) {
+    collectBodiesFromParts(msg.payload.parts, extracted);
   }
 
-  return "";
+  if (!extracted.text && msg.payload.body?.data) {
+    extracted.text = decodeBase64Url(msg.payload.body.data);
+  }
+
+  if (!extracted.html && msg.payload.body?.data && msg.payload.mimeType === "text/html") {
+    extracted.html = decodeBase64Url(msg.payload.body.data);
+  }
+
+  if (!extracted.text && extracted.html) {
+    extracted.text = extracted.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  return extracted;
 }
 
 Deno.serve(async (req) => {
@@ -145,7 +147,7 @@ Deno.serve(async (req) => {
 
       const subject = getHeader(fullMsg, "Subject") || "Sem assunto";
       const from = getHeader(fullMsg, "From") || "Desconhecido";
-      const body = extractBody(fullMsg);
+      const { text: plainBody, html: htmlBody } = extractBodies(fullMsg);
 
       // Extract brand from sender (domain or name)
       const brandMatch = from.match(/^(.+?)\s*</);
@@ -157,7 +159,8 @@ Deno.serve(async (req) => {
         source: "gmail",
         raw_subject: subject,
         raw_from: from,
-        raw_body: body,
+        raw_body: plainBody || htmlBody,
+        parsed_body: htmlBody || null,
         title: subject,
         brand: brand,
         status: "new",

@@ -145,6 +145,9 @@ const AdminReview = () => {
     );
   }
 
+  const emailHtml = submission.parsed_body || "";
+  const hasEmailHtml = /<[^>]+>/.test(emailHtml);
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -252,7 +255,32 @@ const AdminReview = () => {
           {/* Preview + Checklist + Actions */}
           <div className="space-y-6">
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4">
-              <h2 className="font-display text-xl font-bold text-card-foreground">Preview</h2>
+              <h2 className="font-display text-xl font-bold text-card-foreground">Email Original</h2>
+              <div className="space-y-1 text-sm text-muted-foreground">
+                <p><span className="text-foreground font-medium">Assunto:</span> {submission.raw_subject || "Sem assunto"}</p>
+                <p><span className="text-foreground font-medium">De:</span> {submission.raw_from || "Não informado"}</p>
+              </div>
+
+              {hasEmailHtml ? (
+                <div className="rounded-xl border bg-background overflow-hidden">
+                  <iframe
+                    title="Visual do email original"
+                    sandbox="allow-popups allow-popups-to-escape-sandbox"
+                    srcDoc={emailHtml}
+                    className="w-full h-[420px]"
+                  />
+                </div>
+              ) : (
+                <div className="bg-muted/50 rounded-xl p-4 border">
+                  <pre className="whitespace-pre-wrap text-sm text-foreground font-body leading-relaxed">
+                    {submission.raw_body || "Sem conteúdo original"}
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4">
+              <h2 className="font-display text-xl font-bold text-card-foreground">Preview do Template</h2>
               <div className="flex gap-2 flex-wrap items-center">
                 <TypeBadge type={form.template_type} />
                 {form.brand && <span className="text-sm font-medium text-primary">{form.brand}</span>}
