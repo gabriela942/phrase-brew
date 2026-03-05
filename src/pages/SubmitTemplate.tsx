@@ -1,16 +1,15 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCategories } from "@/lib/hooks";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Send, Mail, ArrowLeft } from "lucide-react";
+import { Send, Mail, ArrowLeft, Upload, X, ImageIcon } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type TemplateType = Database["public"]["Enums"]["template_type"];
@@ -19,29 +18,67 @@ const SubmitTemplate = () => {
   const navigate = useNavigate();
   const { data: categories } = useCategories();
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
-    title: "",
     template_type: "whatsapp" as TemplateType,
-    content: "",
     suggested_category: "",
     suggested_tags: "",
     segment: "",
     brand: "",
   });
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione apenas arquivos de imagem.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 10MB.");
+      return;
+    }
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.content.trim()) {
-      toast.error("Preencha título e conteúdo.");
+    if (!imageFile) {
+      toast.error("Anexe um print/imagem do modelo.");
       return;
     }
     setLoading(true);
+
+    // Upload image
+    const fileExt = imageFile.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from("submission-images")
+      .upload(fileName, imageFile);
+
+    if (uploadError) {
+      toast.error("Erro ao enviar imagem. Tente novamente.");
+      setLoading(false);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from("submission-images")
+      .getPublicUrl(fileName);
+
     const { error } = await supabase.from("submissions").insert({
       source: "form",
-      title: form.title.trim(),
       template_type: form.template_type,
-      parsed_body: form.content.trim(),
-      raw_body: form.content.trim(),
+      raw_body: urlData.publicUrl,
       suggested_category: form.suggested_category || null,
       suggested_tags: form.suggested_tags ? form.suggested_tags.split(",").map((t) => t.trim()).filter(Boolean) : null,
       segment: form.segment || null,
@@ -110,33 +147,50 @@ const SubmitTemplate = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Título do modelo *</Label>
-                <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  placeholder="Ex: Email de boas-vindas para novo cliente"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Marca / Enviador</Label>
-                <Input
-                  value={form.brand}
-                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                  placeholder="Ex: Nubank, iFood, Magazine Luiza"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label>Marca / Enviador</Label>
+              <Input
+                value={form.brand}
+                onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                placeholder="Ex: Nubank, iFood, Magazine Luiza"
+              />
             </div>
 
             <div className="space-y-2">
-              <Label>Conteúdo *</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
-                placeholder="Cole o conteúdo do template aqui..."
-                rows={10}
+              <Label>Print / Imagem do modelo *</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
               />
+              {imagePreview ? (
+                <div className="relative rounded-xl border border-border overflow-hidden">
+                  <img src={imagePreview} alt="Preview" className="w-full max-h-80 object-contain bg-muted" />
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="absolute top-2 right-2 bg-background/80 backdrop-blur-sm rounded-full p-1.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center gap-3 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
+                >
+                  <div className="bg-primary/10 rounded-full p-3">
+                    <ImageIcon className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-medium text-foreground">Clique para anexar o print</p>
+                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG ou WEBP — máx. 10MB</p>
+                  </div>
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
