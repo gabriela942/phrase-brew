@@ -86,20 +86,25 @@ function stripHtml(html: string): string {
 /** Sanitize HTML: remove forwarded message headers, To/From lines, and email addresses */
 function sanitizeEmailHtml(html: string): string {
   let sanitized = html;
-  // Remove "---------- Forwarded message ---------" and everything after it until the actual content resumes
-  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}[\s\S]*?(?=<div|<table|<br\s*\/?>.*?<br\s*\/?>.*?<[^>]+>)/gi, "");
+  // Remove the entire gmail_attr div (contains forwarded message header with From/To/Date/Subject)
+  sanitized = sanitized.replace(/<div[^>]*class="[^"]*gmail_attr[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
+  // Remove the outer gmail_quote wrapper divs but keep inner content
+  sanitized = sanitized.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>/gi, "<div>");
+  // Remove any remaining "---------- Forwarded message ---------" text
+  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}/gi, "");
   // Remove standalone forwarded message blocks (plain text style)
-  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}[^<]*/gi, "");
-  // Remove "From:", "To:", "Sent to", "Date:", "Subject:" metadata lines (HTML)
-  sanitized = sanitized.replace(/<[^>]*>?\s*(From|To|De|Para|Sent|Enviado para|Date|Data|Subject|Assunto)\s*:\s*[^<]*<\/[^>]+>/gi, "");
-  // Remove plain text From/To lines
   sanitized = sanitized.replace(/^(From|To|De|Para|Sent|Enviado para|Date|Data|Subject|Assunto)\s*:.*$/gim, "");
-  // Remove all email addresses (user@domain.com pattern)
+  // Remove all email addresses
   sanitized = sanitized.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, "");
   // Remove mailto: links but keep the link text
   sanitized = sanitized.replace(/<a[^>]*href=["']mailto:[^"']*["'][^>]*>(.*?)<\/a>/gi, "$1");
+  // Remove &lt;email&gt; patterns
+  sanitized = sanitized.replace(/&lt;\s*&gt;/g, "");
+  sanitized = sanitized.replace(/<\s*>/g, "");
   // Clean up empty tags left behind
-  sanitized = sanitized.replace(/<(div|span|p|td|font)[^>]*>\s*<\/\1>/gi, "");
+  sanitized = sanitized.replace(/<(div|span|p|td|font|strong)[^>]*>\s*<\/\1>/gi, "");
+  // Clean up leading empty divs/brs at the start
+  sanitized = sanitized.replace(/^(\s*<(div|br)[^>]*>\s*)+/i, "");
   return sanitized;
 }
 
