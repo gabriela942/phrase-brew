@@ -12,11 +12,59 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useCategories } from "@/lib/hooks";
 import { toast } from "sonner";
-import { ArrowLeft, Check, X, Save } from "lucide-react";
+import { ArrowLeft, Check, X, Save, Download, Copy } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type TemplateType = Database["public"]["Enums"]["template_type"];
 type ToneType = Database["public"]["Enums"]["tone_type"];
+
+function extractBrandFromSender(rawFrom: string | null): string {
+  if (!rawFrom) return "";
+  const nameMatch = rawFrom.match(/^"?([^"<]+)"?\s*</);
+  if (nameMatch) return nameMatch[1].trim();
+  const emailMatch = rawFrom.match(/([^@]+)@/);
+  return emailMatch ? emailMatch[1].trim() : rawFrom;
+}
+
+function guessFieldsFromContent(content: string, subject: string) {
+  const lower = (content + " " + subject).toLowerCase();
+
+  let tone: ToneType | "" = "";
+  if (/urgente|última chance|corra|não perca|expira/i.test(lower)) tone = "urgent";
+  else if (/prezado|senhor|formal|cordialmente/i.test(lower)) tone = "formal";
+  else if (/hey|oi|fala|beleza|e aí/i.test(lower)) tone = "casual";
+  else if (/amigo|querido|carinho|abraço/i.test(lower)) tone = "friendly";
+  else tone = "direct";
+
+  let persona = "";
+  if (/empresa|negócio|b2b|corporat|parceiro|cnpj/i.test(lower)) persona = "b2b";
+  else if (/você|cliente|compra|pedido|oferta|desconto|cupom/i.test(lower)) persona = "b2c";
+
+  const tagSet = new Set<string>();
+  if (/promoção|desconto|oferta|cupom|% off/i.test(lower)) tagSet.add("promoção");
+  if (/boas-vindas|bem-vindo|welcome|onboarding/i.test(lower)) tagSet.add("onboarding");
+  if (/newsletter|novidades|atualização/i.test(lower)) tagSet.add("newsletter");
+  if (/abandono|carrinho|cart/i.test(lower)) tagSet.add("carrinho abandonado");
+  if (/transacional|confirmação|pedido|entrega|tracking/i.test(lower)) tagSet.add("transacional");
+  if (/reengaj|reativação|sentimos sua falta|volte/i.test(lower)) tagSet.add("reengajamento");
+  if (/nps|pesquisa|feedback|avaliação/i.test(lower)) tagSet.add("feedback");
+
+  const variables: string[] = [];
+  const varMatches = content.match(/\{[^}]+\}/g);
+  if (varMatches) varMatches.forEach((v) => variables.push(v));
+  // Also detect common placeholders
+  if (/\[nome\]|\[name\]/i.test(content)) variables.push("{nome}");
+
+  let marketType = "";
+  if (/fintech|banco|cartão|crédito|investimento/i.test(lower)) marketType = "Fintech";
+  else if (/e-commerce|loja|compra|produto|frete/i.test(lower)) marketType = "E-commerce";
+  else if (/saas|software|plataforma|assinatura|trial/i.test(lower)) marketType = "SaaS";
+  else if (/educação|curso|aula|professor/i.test(lower)) marketType = "Educação";
+  else if (/saúde|médico|clínica|consulta/i.test(lower)) marketType = "Saúde";
+  else if (/food|comida|restaurante|delivery/i.test(lower)) marketType = "Food & Delivery";
+
+  return { tone, persona, tags: Array.from(tagSet).join(", "), variables: variables.join(", "), marketType };
+}
 
 const AdminReview = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,21 +109,45 @@ const AdminReview = () => {
 
   useEffect(() => {
     if (submission) {
+      const brand = extractBrandFromSender(submission.raw_from) || submission.brand || "";
+      const textContent = submission.raw_body || submission.parsed_body || "";
+      const subject = submission.raw_subject || "";
+      const guessed = guessFieldsFromContent(textContent, subject);
+
       setForm({
         title: submission.title || submission.raw_subject || "",
         template_type: submission.template_type,
         content: submission.parsed_body || submission.raw_body || "",
         category_id: "",
-        tags: submission.suggested_tags?.join(", ") || "",
-        tone: "",
-        persona: "",
-        variables: "",
+        tags: submission.suggested_tags?.join(", ") || guessed.tags,
+        tone: guessed.tone,
+        persona: guessed.persona,
+        variables: guessed.variables,
         notes: submission.notes || "",
-        brand: submission.brand || "",
-        market_type: submission.market_type || "",
+        brand: brand,
+        market_type: submission.market_type || guessed.marketType,
       });
     }
   }, [submission]);
+
+  const handleCopyText = () => {
+    const text = submission?.raw_body || submission?.parsed_body?.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "";
+    navigator.clipboard.writeText(text);
+    toast.success("Texto copiado!");
+  };
+
+  const handleDownloadHtml = () => {
+    const html = submission?.parsed_body || "";
+    if (!html) { toast.error("Sem HTML disponível."); return; }
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${(submission?.raw_subject || "email").replace(/[^a-zA-Z0-9]/g, "_")}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("HTML baixado!");
+  };
 
   const handleApprove = async () => {
     if (!form.title || !form.content) {
@@ -151,111 +223,28 @@ const AdminReview = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="container py-8 max-w-6xl">
+      <div className="container py-8 max-w-7xl">
         <Button variant="ghost" className="mb-6" onClick={() => navigate("/admin")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar ao Inbox
         </Button>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Editor */}
-          <div className="bg-card rounded-2xl border shadow-card p-6 space-y-5">
-            <h2 className="font-display text-xl font-bold text-card-foreground">Editar & Categorizar</h2>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo de Comunicação</Label>
-                <Select value={form.template_type} onValueChange={(v: any) => setForm({ ...form, template_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="email">📧 Email</SelectItem>
-                    <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
-                    <SelectItem value="sms">📱 SMS</SelectItem>
-                    <SelectItem value="push">🔔 Push</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    {categories?.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Título</Label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Conteúdo</Label>
-              <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Marca / Enviador</Label>
-                <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Ex: Nubank, iFood" />
-              </div>
-              <div className="space-y-2">
-                <Label>Tipo de Mercado</Label>
-                <Input value={form.market_type} onChange={(e) => setForm({ ...form, market_type: e.target.value })} placeholder="Ex: Fintech, E-commerce, SaaS" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Tags</Label>
-                <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="tag1, tag2" />
-              </div>
-              <div className="space-y-2">
-                <Label>Tom de voz</Label>
-                <Select value={form.tone} onValueChange={(v: any) => setForm({ ...form, tone: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="formal">Formal</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                    <SelectItem value="direct">Direto</SelectItem>
-                    <SelectItem value="friendly">Amigável</SelectItem>
-                    <SelectItem value="urgent">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Persona</Label>
-                <Select value={form.persona} onValueChange={(v) => setForm({ ...form, persona: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="b2b">B2B</SelectItem>
-                    <SelectItem value="b2c">B2C</SelectItem>
-                    <SelectItem value="both">Ambos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Variáveis</Label>
-                <Input value={form.variables} onChange={(e) => setForm({ ...form, variables: e.target.value })} placeholder="{nome}, {pedido}" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Observações internas</Label>
-              <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
-            </div>
-          </div>
-
-          {/* Preview + Checklist + Actions */}
+          {/* Left: Email Original (large) */}
           <div className="space-y-6">
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4">
-              <h2 className="font-display text-xl font-bold text-card-foreground">Email Original</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-xl font-bold text-card-foreground">Email Original</h2>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={handleCopyText}>
+                    <Copy className="h-3.5 w-3.5 mr-1" /> Copiar Texto
+                  </Button>
+                  {hasEmailHtml && (
+                    <Button size="sm" variant="outline" onClick={handleDownloadHtml}>
+                      <Download className="h-3.5 w-3.5 mr-1" /> Baixar HTML
+                    </Button>
+                  )}
+                </div>
+              </div>
               <div className="space-y-1 text-sm text-muted-foreground">
                 <p><span className="text-foreground font-medium">Assunto:</span> {submission.raw_subject || "Sem assunto"}</p>
                 <p><span className="text-foreground font-medium">De:</span> {submission.raw_from || "Não informado"}</p>
@@ -267,18 +256,117 @@ const AdminReview = () => {
                     title="Visual do email original"
                     sandbox="allow-popups allow-popups-to-escape-sandbox"
                     srcDoc={emailHtml}
-                    className="w-full h-[420px]"
+                    className="w-full"
+                    style={{ minHeight: "700px" }}
                   />
                 </div>
               ) : (
-                <div className="bg-muted/50 rounded-xl p-4 border">
+                <div className="bg-muted/50 rounded-xl p-4 border" style={{ minHeight: "400px" }}>
                   <pre className="whitespace-pre-wrap text-sm text-foreground font-body leading-relaxed">
                     {submission.raw_body || "Sem conteúdo original"}
                   </pre>
                 </div>
               )}
             </div>
+          </div>
 
+          {/* Right: Editor + Preview + Checklist + Actions */}
+          <div className="space-y-6">
+            <div className="bg-card rounded-2xl border shadow-card p-6 space-y-5">
+              <h2 className="font-display text-xl font-bold text-card-foreground">Editar & Categorizar</h2>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tipo de Comunicação</Label>
+                  <Select value={form.template_type} onValueChange={(v: any) => setForm({ ...form, template_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">📧 Email</SelectItem>
+                      <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                      <SelectItem value="sms">📱 SMS</SelectItem>
+                      <SelectItem value="push">🔔 Push</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Categoria</Label>
+                  <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      {categories?.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.icon} {c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Título</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Conteúdo</Label>
+                <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={8} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Marca / Enviador</Label>
+                  <Input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="Ex: Nubank, iFood" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo de Mercado</Label>
+                  <Input value={form.market_type} onChange={(e) => setForm({ ...form, market_type: e.target.value })} placeholder="Ex: Fintech, SaaS" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tags</Label>
+                  <Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="tag1, tag2" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tom de voz</Label>
+                  <Select value={form.tone} onValueChange={(v: any) => setForm({ ...form, tone: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="formal">Formal</SelectItem>
+                      <SelectItem value="casual">Casual</SelectItem>
+                      <SelectItem value="direct">Direto</SelectItem>
+                      <SelectItem value="friendly">Amigável</SelectItem>
+                      <SelectItem value="urgent">Urgente</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Persona</Label>
+                  <Select value={form.persona} onValueChange={(v) => setForm({ ...form, persona: v })}>
+                    <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="b2b">B2B</SelectItem>
+                      <SelectItem value="b2c">B2C</SelectItem>
+                      <SelectItem value="both">Ambos</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Variáveis</Label>
+                  <Input value={form.variables} onChange={(e) => setForm({ ...form, variables: e.target.value })} placeholder="{nome}, {pedido}" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observações internas</Label>
+                <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} />
+              </div>
+            </div>
+
+            {/* Preview */}
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4">
               <h2 className="font-display text-xl font-bold text-card-foreground">Preview do Template</h2>
               <div className="flex gap-2 flex-wrap items-center">
@@ -287,16 +375,14 @@ const AdminReview = () => {
                 {form.market_type && <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{form.market_type}</span>}
               </div>
               <h3 className="font-display font-semibold text-lg text-card-foreground">{form.title || "Sem título"}</h3>
-              <div className="bg-muted/50 rounded-xl p-4 border">
+              <div className="bg-muted/50 rounded-xl p-4 border max-h-60 overflow-y-auto">
                 <pre className="whitespace-pre-wrap text-sm text-foreground font-body leading-relaxed">
                   {form.content || "Sem conteúdo"}
                 </pre>
               </div>
-              {submission.raw_from && (
-                <p className="text-xs text-muted-foreground">De: {submission.raw_from}</p>
-              )}
             </div>
 
+            {/* Checklist */}
             <div className="bg-card rounded-2xl border shadow-card p-6 space-y-3">
               <h3 className="font-display font-semibold text-card-foreground">Checklist de Qualidade</h3>
               {[
@@ -315,6 +401,7 @@ const AdminReview = () => {
               ))}
             </div>
 
+            {/* Actions */}
             <div className="flex flex-col gap-2">
               <Button variant="hero" size="lg" onClick={handleApprove}>
                 <Check className="h-4 w-4 mr-2" /> Aprovar e Publicar
