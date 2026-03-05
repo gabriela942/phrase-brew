@@ -3,7 +3,7 @@ import { useTemplate, incrementCopyCount } from "@/lib/hooks";
 import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Calendar, Tag } from "lucide-react";
+import { ArrowLeft, Copy, Calendar, Tag, Download } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
@@ -16,7 +16,20 @@ const TemplateDetail = () => {
     if (!template) return;
     await navigator.clipboard.writeText(template.content);
     await incrementCopyCount(template.id);
-    toast.success("Conteúdo copiado!");
+    toast.success("Texto copiado!");
+  };
+
+  const handleDownloadHtml = () => {
+    if (!template) return;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.title}</title></head><body><pre style="white-space:pre-wrap;font-family:sans-serif;">${template.content}</pre></body></html>`;
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${template.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("HTML baixado!");
   };
 
   if (isLoading) {
@@ -83,14 +96,14 @@ const TemplateDetail = () => {
               <pre className="whitespace-pre-wrap font-body text-sm text-foreground leading-relaxed">
                 {template.content}
               </pre>
-              <Button
-                size="lg"
-                variant="hero"
-                className="mt-4"
-                onClick={handleCopy}
-              >
-                <Copy className="h-4 w-4 mr-2" /> Copiar conteúdo
-              </Button>
+              <div className="flex gap-2 mt-4">
+                <Button size="lg" variant="hero" onClick={handleCopy}>
+                  <Copy className="h-4 w-4 mr-2" /> Copiar Texto
+                </Button>
+                <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
+                  <Download className="h-4 w-4 mr-2" /> Baixar HTML
+                </Button>
+              </div>
             </div>
 
             {template.variables && template.variables.length > 0 && (
