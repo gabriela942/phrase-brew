@@ -4,20 +4,36 @@ import { Navbar } from "@/components/Navbar";
 import { SearchFilters } from "@/components/SearchFilters";
 import { TemplateCard } from "@/components/TemplateCard";
 import { usePublishedTemplates } from "@/lib/hooks";
-import { Layers, Mail, ArrowRight } from "lucide-react";
+import { Layers, Mail, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+
+const TEMPLATES_PER_PAGE = 6;
 
 const Index = () => {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [marketFilter, setMarketFilter] = useState("");
+  const [segmentFilter, setSegmentFilter] = useState("");
+  const [page, setPage] = useState(1);
 
   const { data: templates, isLoading } = usePublishedTemplates({
     search: search || undefined,
     type: typeFilter || undefined,
     categoryId: categoryFilter && categoryFilter !== "all" ? categoryFilter : undefined,
+    marketType: marketFilter || undefined,
+    segment: segmentFilter || undefined,
   });
+
+  const totalPages = templates ? Math.ceil(templates.length / TEMPLATES_PER_PAGE) : 1;
+  const paginatedTemplates = templates?.slice((page - 1) * TEMPLATES_PER_PAGE, page * TEMPLATES_PER_PAGE);
+
+  // Reset page when filters change
+  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
+    setter(v);
+    setPage(1);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -45,8 +61,94 @@ const Index = () => {
         </div>
       </section>
 
-      {/* How to contribute */}
-      <section className="container pb-10">
+      {/* Filters + Grid */}
+      <section className="container pb-16 space-y-8">
+        <SearchFilters
+          search={search}
+          onSearchChange={handleFilterChange(setSearch)}
+          typeFilter={typeFilter}
+          onTypeChange={handleFilterChange(setTypeFilter)}
+          categoryFilter={categoryFilter}
+          onCategoryChange={handleFilterChange(setCategoryFilter)}
+          marketFilter={marketFilter}
+          onMarketChange={handleFilterChange(setMarketFilter)}
+          segmentFilter={segmentFilter}
+          onSegmentChange={handleFilterChange(setSegmentFilter)}
+        />
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-48 bg-muted animate-pulse rounded-xl" />
+            ))}
+          </div>
+        ) : paginatedTemplates && paginatedTemplates.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginatedTemplates.map((t) => (
+                <TemplateCard
+                  key={t.id}
+                  id={t.id}
+                  title={t.title}
+                  content={t.content}
+                  template_type={t.template_type}
+                  copies_count={t.copies_count}
+                  tags={t.tags}
+                  brand={t.brand}
+                  categories={t.categories as any}
+                  published_at={t.published_at}
+                />
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <Button
+                    key={i}
+                    variant={page === i + 1 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPage(i + 1)}
+                    className="min-w-[36px]"
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page === totalPages}
+                  onClick={() => setPage(page + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center py-20 space-y-4">
+            <Layers className="h-12 w-12 text-muted-foreground mx-auto" />
+            <h3 className="font-display text-xl font-semibold text-foreground">Nenhum template encontrado</h3>
+            <p className="text-muted-foreground">
+              {search || typeFilter || categoryFilter 
+                ? "Tente ajustar seus filtros."
+                : "Seja o primeiro a contribuir com um modelo!"}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* How to contribute - at the bottom */}
+      <section className="container pb-16">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -62,92 +164,71 @@ const Index = () => {
                 Como contribuir com a comunidade
               </h2>
               <p className="text-muted-foreground leading-relaxed">
-                Recebeu um email, WhatsApp, SMS ou Push interessante? Compartilhe com a comunidade! 
-                Basta <strong className="text-foreground">encaminhar a mensagem</strong> para:
+                Recebeu um email, WhatsApp, SMS ou Push interessante? Compartilhe com a comunidade!
               </p>
-              <div className="flex items-center gap-3 flex-wrap">
-                <code className="text-lg font-mono font-bold text-primary bg-primary/10 px-4 py-2 rounded-lg">
-                  modelscrm@gmail.com
-                </code>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText("modelscrm@gmail.com");
-                    import("sonner").then(({ toast }) => toast.success("Email copiado!"));
-                  }}
-                >
-                  Copiar email
-                </Button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3">
+                {/* Email - forward only */}
+                <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 space-y-2">
+                  <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
+                    📧 Email
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Encaminhe o email original</strong> para:
+                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <code className="text-sm font-mono font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-lg">
+                      modelscrm@gmail.com
+                    </code>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText("modelscrm@gmail.com");
+                        import("sonner").then(({ toast }) => toast.success("Email copiado!"));
+                      }}
+                    >
+                      Copiar
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Encaminhe diretamente da caixa de entrada — preservamos o visual original.
+                  </p>
+                </div>
+
+                {/* SMS, WhatsApp, Push - form/print */}
+                <div className="bg-secondary/5 border border-secondary/10 rounded-xl p-4 space-y-2">
+                  <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
+                    💬 WhatsApp · 📱 SMS · 🔔 Push
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    <strong className="text-foreground">Envie um print</strong> pelo formulário:
+                  </p>
+                  <Link to="/submit">
+                    <Button size="sm" variant="default" className="mt-1">
+                      Enviar pelo formulário <ArrowRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    Tire um screenshot da mensagem e envie com o conteúdo.
+                  </p>
+                </div>
               </div>
+
               <div className="pt-3 space-y-1.5">
                 <p className="text-sm text-muted-foreground">
                   <strong className="text-foreground">📌 Dicas:</strong>
                 </p>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li>Encaminhe o email/mensagem original — quanto mais completo, melhor!</li>
-                  <li>Se quiser, adicione no assunto: <code className="text-xs bg-muted px-1 rounded">[EMAIL]</code>, <code className="text-xs bg-muted px-1 rounded">[WHATSAPP]</code>, <code className="text-xs bg-muted px-1 rounded">[SMS]</code> ou <code className="text-xs bg-muted px-1 rounded">[PUSH]</code> para indicar o tipo</li>
-                  <li>Nossa moderação vai categorizar por tipo de comunicação, mercado, categoria e marca</li>
+                  <li>Para emails, encaminhe diretamente — quanto mais completo, melhor!</li>
+                  <li>Para WhatsApp, SMS e Push, tire um print claro da mensagem</li>
+                  <li>Nossa moderação vai categorizar por tipo, mercado, categoria e marca</li>
                   <li>O modelo será revisado antes de ser publicado na biblioteca</li>
                 </ul>
-              </div>
-              <div className="pt-2">
-                <p className="text-sm text-muted-foreground">
-                  Prefere usar um formulário?{" "}
-                  <Link to="/submit" className="text-primary font-medium hover:underline inline-flex items-center gap-1">
-                    Enviar modelo pelo formulário <ArrowRight className="h-3 w-3" />
-                  </Link>
-                </p>
               </div>
             </div>
           </div>
         </motion.div>
-      </section>
-
-      {/* Filters + Grid */}
-      <section className="container pb-16 space-y-8">
-        <SearchFilters
-          search={search}
-          onSearchChange={setSearch}
-          typeFilter={typeFilter}
-          onTypeChange={setTypeFilter}
-          categoryFilter={categoryFilter}
-          onCategoryChange={setCategoryFilter}
-        />
-
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-48 bg-muted animate-pulse rounded-xl" />
-            ))}
-          </div>
-        ) : templates && templates.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {templates.map((t) => (
-              <TemplateCard
-                key={t.id}
-                id={t.id}
-                title={t.title}
-                content={t.content}
-                template_type={t.template_type}
-                copies_count={t.copies_count}
-                tags={t.tags}
-                brand={t.brand}
-                categories={t.categories as any}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-20 space-y-4">
-            <Layers className="h-12 w-12 text-muted-foreground mx-auto" />
-            <h3 className="font-display text-xl font-semibold text-foreground">Nenhum template encontrado</h3>
-            <p className="text-muted-foreground">
-              {search || typeFilter || categoryFilter 
-                ? "Tente ajustar seus filtros."
-                : "Seja o primeiro a contribuir com um modelo!"}
-            </p>
-          </div>
-        )}
       </section>
     </div>
   );

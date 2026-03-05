@@ -2,7 +2,7 @@ import { Search, Mail, MessageCircle, Smartphone, Bell, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCategories } from "@/lib/hooks";
+import { useCategories, useDistinctFilterValues } from "@/lib/hooks";
 
 interface SearchFiltersProps {
   search: string;
@@ -11,13 +11,19 @@ interface SearchFiltersProps {
   onTypeChange: (v: string) => void;
   categoryFilter: string;
   onCategoryChange: (v: string) => void;
+  marketFilter: string;
+  onMarketChange: (v: string) => void;
+  segmentFilter: string;
+  onSegmentChange: (v: string) => void;
 }
 
 export function SearchFilters({
-  search, onSearchChange, typeFilter, onTypeChange, categoryFilter, onCategoryChange
+  search, onSearchChange, typeFilter, onTypeChange, categoryFilter, onCategoryChange,
+  marketFilter, onMarketChange, segmentFilter, onSegmentChange,
 }: SearchFiltersProps) {
   const { data: categories } = useCategories();
-  const hasFilters = search || typeFilter || categoryFilter;
+  const { data: filterValues } = useDistinctFilterValues();
+  const hasFilters = search || typeFilter || categoryFilter || marketFilter || segmentFilter;
 
   return (
     <div className="space-y-3">
@@ -51,7 +57,7 @@ export function SearchFilters({
           ))}
         </div>
         <Select value={categoryFilter} onValueChange={onCategoryChange}>
-          <SelectTrigger className="w-[200px] h-9">
+          <SelectTrigger className="w-[180px] h-9">
             <SelectValue placeholder="Categoria" />
           </SelectTrigger>
           <SelectContent>
@@ -63,8 +69,30 @@ export function SearchFilters({
             ))}
           </SelectContent>
         </Select>
+        <Select value={marketFilter} onValueChange={onMarketChange}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder="Mercado" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos mercados</SelectItem>
+            {filterValues?.marketTypes?.map((m) => (
+              <SelectItem key={m} value={m}>{m}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={segmentFilter} onValueChange={onSegmentChange}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder="Segmento" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos segmentos</SelectItem>
+            {filterValues?.segments?.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         {hasFilters && (
-          <Button variant="ghost" size="sm" onClick={() => { onSearchChange(""); onTypeChange(""); onCategoryChange(""); }}>
+          <Button variant="ghost" size="sm" onClick={() => { onSearchChange(""); onTypeChange(""); onCategoryChange(""); onMarketChange(""); onSegmentChange(""); }}>
             <X className="h-3.5 w-3.5 mr-1" /> Limpar
           </Button>
         )}
