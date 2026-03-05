@@ -9,6 +9,7 @@ import SubmitTemplate from "./pages/SubmitTemplate";
 import Admin from "./pages/Admin";
 import AdminReview from "./pages/AdminReview";
 import NotFound from "./pages/NotFound";
+import { AdminGate } from "./components/AdminGate";
 
 const queryClient = new QueryClient();
 
@@ -22,8 +23,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/template/:id" element={<TemplateDetail />} />
           <Route path="/submit" element={<SubmitTemplate />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/review/:id" element={<AdminReview />} />
+          <Route path="/admin" element={<AdminGate><Admin /></AdminGate>} />
+          <Route path="/admin/review/:id" element={<AdminGate><AdminReview /></AdminGate>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
