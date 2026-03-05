@@ -83,6 +83,26 @@ function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
 }
 
+/** Sanitize HTML: remove forwarded message headers, To/From lines, and email addresses */
+function sanitizeEmailHtml(html: string): string {
+  let sanitized = html;
+  // Remove "---------- Forwarded message ---------" and everything after it until the actual content resumes
+  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}[\s\S]*?(?=<div|<table|<br\s*\/?>.*?<br\s*\/?>.*?<[^>]+>)/gi, "");
+  // Remove standalone forwarded message blocks (plain text style)
+  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}[^<]*/gi, "");
+  // Remove "From:", "To:", "Sent to", "Date:", "Subject:" metadata lines (HTML)
+  sanitized = sanitized.replace(/<[^>]*>?\s*(From|To|De|Para|Sent|Enviado para|Date|Data|Subject|Assunto)\s*:\s*[^<]*<\/[^>]+>/gi, "");
+  // Remove plain text From/To lines
+  sanitized = sanitized.replace(/^(From|To|De|Para|Sent|Enviado para|Date|Data|Subject|Assunto)\s*:.*$/gim, "");
+  // Remove all email addresses (user@domain.com pattern)
+  sanitized = sanitized.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, "");
+  // Remove mailto: links but keep the link text
+  sanitized = sanitized.replace(/<a[^>]*href=["']mailto:[^"']*["'][^>]*>(.*?)<\/a>/gi, "$1");
+  // Clean up empty tags left behind
+  sanitized = sanitized.replace(/<(div|span|p|td|font)[^>]*>\s*<\/\1>/gi, "");
+  return sanitized;
+}
+
 const AdminReview = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -127,17 +147,20 @@ const AdminReview = () => {
   useEffect(() => {
     if (submission) {
       const brand = extractBrandFromSender(submission.raw_from) || submission.brand || "";
-      const rawText = submission.raw_body || "";
       const htmlContent = submission.parsed_body || "";
-      const textContent = rawText || stripHtml(htmlContent);
+      const rawText = submission.raw_body || "";
+      const textForAnalysis = rawText || stripHtml(htmlContent);
       const subject = submission.raw_subject || "";
-      const guessed = guessFieldsFromContent(textContent, subject);
-      const guessedCategory = guessCategoryFromContent(textContent, subject, (categories || []) as CategoryOption[]);
+      const guessed = guessFieldsFromContent(textForAnalysis, subject);
+      const guessedCategory = guessCategoryFromContent(textForAnalysis, subject, (categories || []) as CategoryOption[]);
+
+      // Content = sanitized HTML (preserves images/layout) or raw text
+      const content = htmlContent ? sanitizeEmailHtml(htmlContent) : rawText;
 
       setForm({
         title: submission.title || submission.raw_subject || "",
         template_type: submission.template_type,
-        content: textContent,
+        content,
         category_id: guessedCategory,
         tags: submission.suggested_tags?.join(", ") || guessed.tags,
         tone: guessed.tone,
