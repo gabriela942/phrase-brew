@@ -83,13 +83,10 @@ function guessFieldsFromContent(content: string, subject: string) {
   if (/\[nome\]|\[name\]/i.test(content)) variables.push("{nome}");
 
   let marketType = "";
-  if (/fintech|banco|cartão|crédito|investimento/i.test(lower)) marketType = "Fintech";
-  else if (/e-commerce|loja|compra|produto|frete/i.test(lower)) marketType = "E-commerce";
+  if (/e-commerce|loja|compra|produto|frete|varejo/i.test(lower)) marketType = "E-commerce/Varejo";
   else if (/saas|software|plataforma|assinatura|trial/i.test(lower)) marketType = "SaaS";
-  else if (/educação|curso|aula|professor|mentoria|conteúdo/i.test(lower)) marketType = "Educação";
-  else if (/saúde|médico|clínica|consulta/i.test(lower)) marketType = "Saúde";
-  else if (/food|comida|restaurante|delivery/i.test(lower)) marketType = "Food & Delivery";
-  else if (/marketing|digital|social|instagram|tráfego|copy/i.test(lower)) marketType = "Marketing Digital";
+  else if (/serviço|saúde|médico|clínica|consulta|food|comida|restaurante|delivery|fintech|banco|cartão|crédito|investimento/i.test(lower)) marketType = "Serviços";
+  else if (/educação|curso|aula|professor|mentoria|conteúdo|infoproduto|marketing|digital|social|instagram|tráfego|copy/i.test(lower)) marketType = "Infoproduto";
 
   return { tone, persona, tags: Array.from(tagSet).join(", "), variables: variables.join(", "), marketType };
 }
@@ -409,7 +406,15 @@ const AdminReview = () => {
               </div>
               <div className="space-y-2">
                 <Label>Tipo de Mercado</Label>
-                <Input value={form.market_type} onChange={(e) => setForm({ ...form, market_type: e.target.value })} placeholder="Ex: Fintech, SaaS" />
+                <Select value={form.market_type} onValueChange={(v) => setForm({ ...form, market_type: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Infoproduto">Infoproduto</SelectItem>
+                    <SelectItem value="SaaS">SaaS</SelectItem>
+                    <SelectItem value="Serviços">Serviços</SelectItem>
+                    <SelectItem value="E-commerce/Varejo">E-commerce/Varejo</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
