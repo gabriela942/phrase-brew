@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Check, X, Inbox } from "lucide-react";
+import { Eye, Check, X, Inbox, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
@@ -31,6 +31,21 @@ const statusLabels: Record<string, string> = {
 const Admin = () => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [ingesting, setIngesting] = useState(false);
+
+  const handleIngestGmail = async () => {
+    setIngesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("ingest-gmail");
+      if (error) throw error;
+      toast.success(`${data.ingested} email(s) importado(s) com sucesso!`);
+      queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+    } catch (err: any) {
+      toast.error("Erro ao importar emails: " + (err.message || "Erro desconhecido"));
+    } finally {
+      setIngesting(false);
+    }
+  };
 
   const { data: submissions, isLoading } = useQuery({
     queryKey: ["admin-submissions", statusFilter],
@@ -59,7 +74,12 @@ const Admin = () => {
             </h1>
             <p className="text-muted-foreground mt-1">Revise e aprove modelos enviados pela comunidade.</p>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <div className="flex gap-2">
+            <Button onClick={handleIngestGmail} disabled={ingesting} variant="outline">
+              <RefreshCw className={`h-4 w-4 mr-2 ${ingesting ? "animate-spin" : ""}`} />
+              {ingesting ? "Importando..." : "Importar Emails"}
+            </Button>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filtrar status" />
             </SelectTrigger>
@@ -71,6 +91,7 @@ const Admin = () => {
               <SelectItem value="rejected">Reprovados</SelectItem>
             </SelectContent>
           </Select>
+          </div>
         </div>
 
         {isLoading ? (
