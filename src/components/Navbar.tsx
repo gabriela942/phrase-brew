@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, Shield } from "lucide-react";
+import { Plus } from "lucide-react";
 import logo from "@/assets/logo-crm-models.png";
 
 export function Navbar() {
@@ -12,14 +12,9 @@ export function Navbar() {
         </Link>
         <nav className="flex items-center gap-2">
           <Button variant="ghost" asChild>
-            <Link to="/submit">
+            <a href="#como-contribuir">
               <Plus className="h-4 w-4 mr-1" /> Enviar Modelo
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/admin">
-              <Shield className="h-4 w-4 mr-1" /> Admin
-            </Link>
+            </a>
           </Button>
         </nav>
       </div>

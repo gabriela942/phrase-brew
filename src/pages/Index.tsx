@@ -153,6 +153,7 @@ const Index = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
+          id="como-contribuir"
           className="bg-card rounded-2xl border shadow-card p-6 md:p-8"
         >
           <div className="flex flex-col md:flex-row md:items-center gap-6">
