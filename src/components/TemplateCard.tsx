@@ -18,16 +18,25 @@ interface TemplateCardProps {
   published_at?: string | null;
 }
 
+const isImageUrl = (str: string) => /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)/i.test(str) || str.includes("supabase") && str.includes("submission-images");
+
 export function TemplateCard({ id, title, content, template_type, copies_count, tags, brand, categories, published_at }: TemplateCardProps) {
   const navigate = useNavigate();
   const isHtml = /<[^>]+>/.test(content);
+  const isImage = isImageUrl(content);
+  const isEmail = template_type === "email";
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const text = isHtml ? content.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim() : content;
-    await navigator.clipboard.writeText(text);
+    if (isImage) {
+      await navigator.clipboard.writeText(content);
+      toast.success("Link copiado!");
+    } else {
+      const text = isHtml ? content.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim() : content;
+      await navigator.clipboard.writeText(text);
+      toast.success("Copiado!");
+    }
     await incrementCopyCount(id);
-    toast.success("Copiado!");
   };
 
   const formattedDate = published_at
@@ -43,8 +52,13 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
       className="group relative bg-card rounded-xl border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer overflow-hidden flex flex-col"
       onClick={() => navigate(`/template/${id}`)}
     >
-      {/* Email visual preview */}
-      {isHtml ? (
+      {/* Image preview for whatsapp/sms/push */}
+      {isImage ? (
+        <div className="relative w-full h-[280px] overflow-hidden border-b bg-muted">
+          <img src={content} alt={brand || "Template"} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/80" />
+        </div>
+      ) : isHtml ? (
         <div className="relative w-full h-[280px] overflow-hidden border-b bg-background">
           <iframe
             title={title}

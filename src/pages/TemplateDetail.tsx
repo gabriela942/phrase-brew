@@ -11,12 +11,16 @@ function stripHtmlToText(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
 }
 
+const isImageUrl = (str: string) => /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)/i.test(str) || str.includes("supabase") && str.includes("submission-images");
+
 const TemplateDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: template, isLoading } = useTemplate(id!);
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
+  const isImage = template?.content ? isImageUrl(template.content) : false;
+  const isEmail = template?.template_type === "email";
 
   const handleCopyText = async () => {
     if (!template) return;
@@ -99,10 +103,16 @@ const TemplateDetail = () => {
               )}
             </div>
 
-            <h1 className="font-display text-2xl md:text-3xl font-bold text-card-foreground">{template.title}</h1>
+            {isEmail && (
+              <h1 className="font-display text-2xl md:text-3xl font-bold text-card-foreground">{template.title}</h1>
+            )}
 
-            {/* Email visual */}
-            {isHtml ? (
+            {/* Content display */}
+            {isImage ? (
+              <div className="rounded-xl border bg-muted overflow-hidden">
+                <img src={template.content} alt={template.brand || "Template"} className="w-full object-contain max-h-[80vh]" />
+              </div>
+            ) : isHtml ? (
               <div className="rounded-xl border bg-background overflow-hidden">
                 <iframe
                   title="Visual do template"
@@ -122,12 +132,22 @@ const TemplateDetail = () => {
 
             {/* Action buttons */}
             <div className="flex gap-2">
-              <Button size="lg" variant="hero" onClick={handleCopyText}>
-                <Copy className="h-4 w-4 mr-2" /> Copiar Texto
-              </Button>
-              <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
-                <Download className="h-4 w-4 mr-2" /> Baixar HTML
-              </Button>
+              {isImage ? (
+                <Button size="lg" variant="hero" asChild>
+                  <a href={template.content} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-4 w-4 mr-2" /> Ver imagem original
+                  </a>
+                </Button>
+              ) : (
+                <>
+                  <Button size="lg" variant="hero" onClick={handleCopyText}>
+                    <Copy className="h-4 w-4 mr-2" /> Copiar Texto
+                  </Button>
+                  <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
+                    <Download className="h-4 w-4 mr-2" /> Baixar HTML
+                  </Button>
+                </>
+              )}
             </div>
 
             {template.variables && template.variables.length > 0 && (
