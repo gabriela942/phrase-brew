@@ -1,0 +1,129 @@
+import { useParams, useNavigate } from "react-router-dom";
+import { useTemplate, incrementCopyCount } from "@/lib/hooks";
+import { Navbar } from "@/components/Navbar";
+import { TypeBadge } from "@/components/TypeBadge";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Copy, Calendar, Tag } from "lucide-react";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+
+const TemplateDetail = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { data: template, isLoading } = useTemplate(id!);
+
+  const handleCopy = async () => {
+    if (!template) return;
+    await navigator.clipboard.writeText(template.content);
+    await incrementCopyCount(template.id);
+    toast.success("Conteúdo copiado!");
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container py-8">
+          <div className="h-96 bg-muted animate-pulse rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!template) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container py-16 text-center">
+          <p className="text-muted-foreground">Template não encontrado.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const cat = template.categories as { name: string; icon: string | null } | null;
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <div className="container py-8 max-w-4xl">
+        <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+        </Button>
+        
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-2xl border shadow-card overflow-hidden"
+        >
+          <div className="p-6 md:p-8 space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <TypeBadge type={template.template_type} />
+              {cat && (
+                <span className="text-sm text-muted-foreground">
+                  {cat.icon} {cat.name}
+                </span>
+              )}
+              {template.tone && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground capitalize">
+                  {template.tone}
+                </span>
+              )}
+            </div>
+
+            <h1 className="font-display text-2xl md:text-3xl font-bold text-card-foreground">{template.title}</h1>
+
+            <div className="relative bg-muted/50 rounded-xl p-6 border">
+              <pre className="whitespace-pre-wrap font-body text-sm text-foreground leading-relaxed">
+                {template.content}
+              </pre>
+              <Button
+                size="lg"
+                variant="hero"
+                className="mt-4"
+                onClick={handleCopy}
+              >
+                <Copy className="h-4 w-4 mr-2" /> Copiar conteúdo
+              </Button>
+            </div>
+
+            {template.variables && template.variables.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-display font-semibold text-foreground">Variáveis</h3>
+                <div className="flex flex-wrap gap-2">
+                  {template.variables.map((v) => (
+                    <code key={v} className="text-sm px-2 py-1 bg-primary/10 text-primary rounded-md font-mono">
+                      {v}
+                    </code>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {template.tags && template.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 items-center">
+                <Tag className="h-4 w-4 text-muted-foreground" />
+                {template.tags.map((tag) => (
+                  <span key={tag} className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">{tag}</span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-4 border-t">
+              <span className="flex items-center gap-1">
+                <Copy className="h-3.5 w-3.5" /> {template.copies_count} cópias
+              </span>
+              {template.published_at && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" /> {new Date(template.published_at).toLocaleDateString("pt-BR")}
+                </span>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+};
+
+export default TemplateDetail;
