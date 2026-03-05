@@ -164,6 +164,8 @@ const AdminReview = () => {
     adequateSize: false,
   });
 
+  const isNonEmail = submission?.template_type !== "email";
+
   useEffect(() => {
     if (submission) {
       const htmlContent = submission.parsed_body || "";
@@ -179,7 +181,7 @@ const AdminReview = () => {
       const guessed = guessFieldsFromContent(textForAnalysis, subject);
       const guessedCategory = guessCategoryFromContent(textForAnalysis, subject, (categories || []) as CategoryOption[]);
 
-      // Content = sanitized HTML (preserves images/layout) or raw text
+      // Content = sanitized HTML (preserves images/layout) or raw text (or image URL for non-email)
       const content = htmlContent ? sanitizeEmailHtml(htmlContent) : rawText;
 
       setForm({
@@ -199,13 +201,14 @@ const AdminReview = () => {
   }, [submission, categories]);
 
   const handleApprove = async () => {
-    if (!form.title || !form.content) {
-      toast.error("Título e conteúdo são obrigatórios.");
+    if (!form.content) {
+      toast.error("Conteúdo é obrigatório.");
       return;
     }
 
     const { error: templateError } = await supabase.from("templates").insert({
-      title: form.title,
+      title: form.title || form.brand || form.template_type,
+      
       template_type: form.template_type,
       content: form.content,
       category_id: form.category_id || null,
@@ -267,6 +270,7 @@ const AdminReview = () => {
 
   const emailHtml = submission.parsed_body || "";
   const hasEmailHtml = /<[^>]+>/.test(emailHtml);
+  const isSubmissionImage = isNonEmail && submission.raw_body && /^https?:\/\//.test(submission.raw_body);
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,15 +280,23 @@ const AdminReview = () => {
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar ao Inbox
         </Button>
 
-        {/* Email Original - Full Width */}
+        {/* Original Content - Full Width */}
         <div className="bg-card rounded-2xl border shadow-card p-6 space-y-4 mb-6">
-          <h2 className="font-display text-xl font-bold text-card-foreground">Email Original</h2>
-          <div className="space-y-1 text-sm text-muted-foreground">
-            <p><span className="text-foreground font-medium">Assunto:</span> {submission.raw_subject || "Sem assunto"}</p>
-            <p><span className="text-foreground font-medium">De:</span> {submission.raw_from || "Não informado"}</p>
-          </div>
+          <h2 className="font-display text-xl font-bold text-card-foreground">
+            {isNonEmail ? "Print Original" : "Email Original"}
+          </h2>
+          {!isNonEmail && (
+            <div className="space-y-1 text-sm text-muted-foreground">
+              <p><span className="text-foreground font-medium">Assunto:</span> {submission.raw_subject || "Sem assunto"}</p>
+              <p><span className="text-foreground font-medium">De:</span> {submission.raw_from || "Não informado"}</p>
+            </div>
+          )}
 
-          {hasEmailHtml ? (
+          {isSubmissionImage ? (
+            <div className="rounded-xl border bg-muted overflow-hidden">
+              <img src={submission.raw_body!} alt="Print do template" className="w-full object-contain max-h-[80vh]" />
+            </div>
+          ) : hasEmailHtml ? (
             <div className="rounded-xl border bg-background overflow-hidden">
               <iframe
                 title="Visual do email original"
@@ -335,15 +347,19 @@ const AdminReview = () => {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Título</Label>
-              <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            </div>
+            {!isNonEmail && (
+              <div className="space-y-2">
+                <Label>Título</Label>
+                <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              </div>
+            )}
 
-            <div className="space-y-2">
-              <Label>Conteúdo (texto do email)</Label>
-              <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} />
-            </div>
+            {!isNonEmail && (
+              <div className="space-y-2">
+                <Label>Conteúdo (texto do email)</Label>
+                <Textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} rows={10} />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
