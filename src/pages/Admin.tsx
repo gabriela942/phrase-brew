@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Eye, Check, X, Inbox, RefreshCw, CheckCheck } from "lucide-react";
+import { Eye, Inbox, RefreshCw, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import type { Database } from "@/integrations/supabase/types";
@@ -33,6 +33,8 @@ const Admin = () => {
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [ingesting, setIngesting] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkApproving, setBulkApproving] = useState(false);
 
   const handleIngestGmail = async () => {
     setIngesting(true);
@@ -64,6 +66,80 @@ const Admin = () => {
     },
   });
 
+  const allIds = submissions?.map((s) => s.id) ?? [];
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+  const someSelected = selected.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(allIds));
+    }
+  };
+
+  const toggleOne = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selected.size === 0) return;
+    setBulkApproving(true);
+    try {
+      const ids = Array.from(selected);
+      // For each selected submission, create a template and mark as approved
+      let approved = 0;
+      let errors = 0;
+      for (const subId of ids) {
+        const sub = submissions?.find((s) => s.id === subId);
+        if (!sub) continue;
+
+        // Check if template already exists for this submission
+        const { data: existing } = await supabase
+          .from("templates")
+          .select("id")
+          .eq("submission_id", subId)
+          .maybeSingle();
+
+        if (!existing) {
+          const { error: tErr } = await supabase.from("templates").insert({
+            title: sub.title || sub.raw_subject || sub.brand || sub.template_type,
+            template_type: sub.template_type,
+            content: sub.parsed_body || sub.raw_body || "",
+            brand: sub.brand || null,
+            market_type: sub.market_type || null,
+            segment: sub.segment || null,
+            tags: sub.suggested_tags || [],
+            submission_id: subId,
+            status: "published",
+            published_at: new Date().toISOString(),
+          });
+          if (tErr) { errors++; continue; }
+        }
+
+        await supabase.from("submissions").update({ status: "approved" }).eq("id", subId);
+        approved++;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      setSelected(new Set());
+
+      if (errors > 0) {
+        toast.warning(`${approved} aprovado(s), ${errors} com erro.`);
+      } else {
+        toast.success(`${approved} submissão(ões) aprovada(s) com sucesso!`);
+      }
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -75,23 +151,29 @@ const Admin = () => {
             </h1>
             <p className="text-muted-foreground mt-1">Revise e aprove modelos enviados pela comunidade.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            {someSelected && (
+              <Button onClick={handleBulkApprove} disabled={bulkApproving} className="gap-2">
+                <CheckCheck className="h-4 w-4" />
+                {bulkApproving ? "Aprovando..." : `Aprovar selecionados (${selected.size})`}
+              </Button>
+            )}
             <Button onClick={handleIngestGmail} disabled={ingesting} variant="outline">
               <RefreshCw className={`h-4 w-4 mr-2 ${ingesting ? "animate-spin" : ""}`} />
               {ingesting ? "Importando..." : "Importar Emails"}
             </Button>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filtrar status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="new">Novos</SelectItem>
-              <SelectItem value="in_review">Em revisão</SelectItem>
-              <SelectItem value="approved">Aprovados</SelectItem>
-              <SelectItem value="rejected">Reprovados</SelectItem>
-            </SelectContent>
-          </Select>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setSelected(new Set()); }}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filtrar status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="new">Novos</SelectItem>
+                <SelectItem value="in_review">Em revisão</SelectItem>
+                <SelectItem value="approved">Aprovados</SelectItem>
+                <SelectItem value="rejected">Reprovados</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -106,6 +188,13 @@ const Admin = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                      aria-label="Selecionar todos"
+                    />
+                  </TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Título / Assunto</TableHead>
@@ -116,7 +205,17 @@ const Admin = () => {
               </TableHeader>
               <TableBody>
                 {submissions.map((s) => (
-                  <TableRow key={s.id}>
+                  <TableRow
+                    key={s.id}
+                    className={selected.has(s.id) ? "bg-primary/5" : ""}
+                  >
+                    <TableCell>
+                      <Checkbox
+                        checked={selected.has(s.id)}
+                        onCheckedChange={() => toggleOne(s.id)}
+                        aria-label="Selecionar linha"
+                      />
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={statusColors[s.status]}>
                         {statusLabels[s.status]}
