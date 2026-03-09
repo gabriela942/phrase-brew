@@ -28,9 +28,10 @@ const TemplateDetail = () => {
   const queryClient = useQueryClient();
   const { data: template, isLoading } = useTemplate(id!);
 
+  const { data: categories } = useCategories();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "" });
+  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "" });
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
