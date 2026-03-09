@@ -354,7 +354,7 @@ const TemplateDetail = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveEdit} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar correção"}
+              {saving ? "Salvando..." : isAdmin ? "Salvar correção" : "Enviar para revisão"}
             </Button>
           </DialogFooter>
         </DialogContent>
