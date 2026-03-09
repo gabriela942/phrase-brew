@@ -22,7 +22,7 @@ const Index = () => {
     search: search || undefined,
     type: typeFilter || undefined,
     categoryId: categoryFilter && categoryFilter !== "all" ? categoryFilter : undefined,
-    marketType: marketFilter || undefined,
+    marketType: marketFilter && marketFilter !== "all" ? marketFilter : undefined,
     
   });
 
