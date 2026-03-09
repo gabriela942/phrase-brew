@@ -31,7 +31,7 @@ const TemplateDetail = () => {
   const { data: categories } = useCategories();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "" });
+  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "", tags: "" });
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
@@ -44,6 +44,7 @@ const TemplateDetail = () => {
       market_type: template.market_type || "",
       template_type: template.template_type,
       category_id: template.category_id || "",
+      tags: template.tags?.join(", ") || "",
     });
     setEditOpen(true);
   };
@@ -59,6 +60,7 @@ const TemplateDetail = () => {
           market_type: editForm.market_type || null,
           template_type: editForm.template_type as any,
           category_id: editForm.category_id || null,
+          tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id);
@@ -304,6 +306,15 @@ const TemplateDetail = () => {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <Input
+                value={editForm.tags}
+                onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                placeholder="Ex: promoção, newsletter, onboarding"
+              />
+              <p className="text-xs text-muted-foreground">Separe as tags por vírgula</p>
             </div>
           </div>
           <DialogFooter>
