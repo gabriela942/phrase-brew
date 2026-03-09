@@ -43,6 +43,7 @@ const TemplateDetail = () => {
       brand: template.brand || "",
       market_type: template.market_type || "",
       template_type: template.template_type,
+      category_id: template.category_id || "",
     });
     setEditOpen(true);
   };
