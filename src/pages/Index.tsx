@@ -147,8 +147,8 @@ const Index = () => {
         )}
       </section>
 
-      {/* Sponsors */}
-      <SponsorsSection />
+      {/* Sponsors footer */}
+      <SponsorsSection variant="footer" />
 
       {/* How to contribute - at the bottom */}
       <section className="container pb-16">
