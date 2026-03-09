@@ -49,28 +49,62 @@ const TemplateDetail = () => {
     setEditOpen(true);
   };
 
+  const isAdmin = sessionStorage.getItem("admin_authenticated") === "true";
+
   const handleSaveEdit = async () => {
     if (!template) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("templates")
-        .update({
-          brand: editForm.brand || null,
-          market_type: editForm.market_type || null,
-          template_type: editForm.template_type as any,
-          category_id: editForm.category_id || null,
-          tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", template.id);
+      if (isAdmin) {
+        // Admin: update directly
+        const { error } = await supabase
+          .from("templates")
+          .update({
+            brand: editForm.brand || null,
+            market_type: editForm.market_type || null,
+            template_type: editForm.template_type as any,
+            category_id: editForm.category_id || null,
+            tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", template.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      await queryClient.invalidateQueries({ queryKey: ["template", id] });
-      await queryClient.refetchQueries({ queryKey: ["template", id] });
-      queryClient.invalidateQueries({ queryKey: ["templates"] });
-      toast.success("Template corrigido com sucesso!");
+        await queryClient.invalidateQueries({ queryKey: ["template", id] });
+        await queryClient.refetchQueries({ queryKey: ["template", id] });
+        queryClient.invalidateQueries({ queryKey: ["templates"] });
+        toast.success("Template corrigido com sucesso!");
+      } else {
+        // Non-admin: create a submission for admin review
+        const correctionData = {
+          template_id: template.id,
+          corrections: {
+            brand: editForm.brand || null,
+            market_type: editForm.market_type || null,
+            template_type: editForm.template_type,
+            category_id: editForm.category_id || null,
+            tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+          },
+        };
+
+        const { error } = await supabase.from("submissions").insert({
+          title: `[Correção] ${template.title}`,
+          template_type: template.template_type,
+          source: "correction",
+          raw_body: template.content,
+          parsed_body: template.content,
+          brand: editForm.brand || template.brand || null,
+          market_type: editForm.market_type || template.market_type || null,
+          suggested_tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+          notes: JSON.stringify(correctionData),
+          status: "new" as any,
+        });
+
+        if (error) throw error;
+
+        toast.success("Correção enviada para revisão! Um administrador irá analisar suas sugestões.");
+      }
       setEditOpen(false);
     } catch (err) {
       console.error("Erro ao salvar:", err);
@@ -320,7 +354,7 @@ const TemplateDetail = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveEdit} disabled={saving}>
-              {saving ? "Salvando..." : "Salvar correção"}
+              {saving ? "Salvando..." : isAdmin ? "Salvar correção" : "Enviar para revisão"}
             </Button>
           </DialogFooter>
         </DialogContent>
