@@ -146,6 +146,9 @@ const Index = () => {
         )}
       </section>
 
+      {/* Sponsors */}
+      <SponsorsSection />
+
       {/* How to contribute - at the bottom */}
       <section className="container pb-16">
         <motion.div
