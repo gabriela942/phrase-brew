@@ -1,11 +1,20 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTemplate, incrementCopyCount } from "@/lib/hooks";
 import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Copy, Calendar, Tag, Download } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+
+const MARKET_TYPES = ["Infoproduto", "SaaS", "Serviços", "E-commerce/Varejo"];
 
 function stripHtmlToText(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/\s+/g, " ").trim();
@@ -16,11 +25,53 @@ const isImageUrl = (str: string) => /^https?:\/\/.+\.(png|jpg|jpeg|webp|gif)/i.t
 const TemplateDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: template, isLoading } = useTemplate(id!);
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "" });
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
   const isEmail = template?.template_type === "email";
+
+  const openEdit = () => {
+    if (!template) return;
+    setEditForm({
+      brand: template.brand || "",
+      market_type: template.market_type || "",
+      template_type: template.template_type,
+    });
+    setEditOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!template) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("templates")
+        .update({
+          brand: editForm.brand || null,
+          market_type: editForm.market_type || null,
+          template_type: editForm.template_type as any,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", template.id);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["template", id] });
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Template corrigido com sucesso!");
+      setEditOpen(false);
+    } catch {
+      toast.error("Erro ao salvar correção.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCopyText = async () => {
     if (!template) return;
@@ -73,10 +124,15 @@ const TemplateDetail = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="container py-8 max-w-5xl">
-        <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
-        </Button>
-        
+        <div className="flex items-center justify-between mb-6">
+          <Button variant="ghost" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
+          </Button>
+          <Button variant="outline" size="sm" onClick={openEdit}>
+            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Corrigir informações
+          </Button>
+        </div>
+
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -185,6 +241,59 @@ const TemplateDetail = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Corrigir informações</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Enviador / Marca</Label>
+              <Input
+                value={editForm.brand}
+                onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
+                placeholder="Ex: Nubank, iFood, Hotmart"
+                maxLength={100}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Mercado</Label>
+              <Select value={editForm.market_type} onValueChange={(v) => setEditForm({ ...editForm, market_type: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {MARKET_TYPES.map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Tipo de Mensagem</Label>
+              <Select value={editForm.template_type} onValueChange={(v) => setEditForm({ ...editForm, template_type: v })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">📧 Email</SelectItem>
+                  <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                  <SelectItem value="sms">📱 SMS</SelectItem>
+                  <SelectItem value="push">🔔 Push</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={saving}>
+              {saving ? "Salvando..." : "Salvar correção"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
