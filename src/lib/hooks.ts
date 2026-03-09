@@ -81,7 +81,14 @@ export function useDistinctFilterValues() {
         .eq("status", "published");
       if (error) throw error;
       
-      const marketTypes = [...new Set(data?.map(t => t.market_type).filter(Boolean) as string[])].sort();
+      // Normalize market types: E-commerce -> E-commerce/Varejo, Serviço -> Serviços
+      const normalizedMarkets = data?.map(t => {
+        if (t.market_type === "E-commerce") return "E-commerce/Varejo";
+        if (t.market_type === "Serviço") return "Serviços";
+        return t.market_type;
+      }).filter(Boolean) as string[];
+      
+      const marketTypes = [...new Set(normalizedMarkets)].sort();
       const segments = [...new Set(data?.map(t => t.segment).filter(Boolean) as string[])].sort();
       
       return { marketTypes, segments };
