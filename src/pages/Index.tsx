@@ -195,21 +195,25 @@ const Index = () => {
                   </p>
                 </div>
 
-                {/* SMS, WhatsApp, Push - form/print */}
+                {/* SMS, WhatsApp, Push - via WhatsApp */}
                 <div className="bg-secondary/5 border border-secondary/10 rounded-xl p-4 space-y-2">
                   <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
                     💬 WhatsApp · 📱 SMS · 🔔 Push
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    <strong className="text-foreground">Envie um print</strong> pelo formulário:
+                    <strong className="text-foreground">Envie o print</strong> diretamente pelo WhatsApp:
                   </p>
-                  <Link to="/submit">
+                  <a
+                    href="https://wa.me/5511985623273?text=enviar_modelo"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <Button size="sm" variant="default" className="mt-1">
-                      Enviar pelo formulário <ArrowRight className="h-3 w-3 ml-1" />
+                      Enviar pelo WhatsApp <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
-                  </Link>
+                  </a>
                   <p className="text-xs text-muted-foreground">
-                    Tire um screenshot da mensagem e envie com o conteúdo.
+                    Tire um screenshot da mensagem e envie pelo WhatsApp.
                   </p>
                 </div>
               </div>
