@@ -307,6 +307,15 @@ const TemplateDetail = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Tags</Label>
+              <Input
+                value={editForm.tags}
+                onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
+                placeholder="Ex: promoção, newsletter, onboarding"
+              />
+              <p className="text-xs text-muted-foreground">Separe as tags por vírgula</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
