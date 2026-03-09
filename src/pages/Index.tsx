@@ -196,20 +196,28 @@ const Index = () => {
                 </div>
 
                 {/* SMS, WhatsApp, Push - via WhatsApp */}
-                <div className="bg-secondary/5 border border-secondary/10 rounded-xl p-4 space-y-2">
+                <div className="bg-secondary/5 border border-secondary/10 rounded-xl p-4 space-y-3">
                   <h3 className="font-display font-semibold text-foreground flex items-center gap-2">
                     💬 WhatsApp · 📱 SMS · 🔔 Push
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     <strong className="text-foreground">Envie o print</strong> diretamente pelo WhatsApp:
                   </p>
+                  <div className="flex justify-center py-1">
+                    <img
+                      src="/qrcode-whatsapp.svg"
+                      alt="QR Code para enviar modelo via WhatsApp"
+                      className="w-36 h-36 rounded-xl border bg-white p-2"
+                    />
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">Escaneie o QR Code ou clique abaixo</p>
                   <a
                     href="https://wa.me/5511985623273?text=enviar_modelo"
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    <Button size="sm" variant="default" className="mt-1">
-                      Enviar pelo WhatsApp <ArrowRight className="h-3 w-3 ml-1" />
+                    <Button size="sm" variant="default" className="w-full mt-1">
+                      Abrir WhatsApp <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
                   </a>
                   <p className="text-xs text-muted-foreground">
