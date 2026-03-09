@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTemplate, incrementCopyCount } from "@/lib/hooks";
+import { useTemplate, useCategories, incrementCopyCount } from "@/lib/hooks";
 import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
