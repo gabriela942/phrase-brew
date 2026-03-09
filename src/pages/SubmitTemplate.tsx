@@ -4,10 +4,8 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
 
-const WHATSAPP_NUMBER = "5549991634091";
-const WHATSAPP_MESSAGE = encodeURIComponent(
-  "Olá! Quero enviar um print de modelo (WhatsApp, SMS ou Push) para o CRM Models 📲"
-);
+const WHATSAPP_NUMBER = "5511985623273";
+const WHATSAPP_MESSAGE = encodeURIComponent("enviar_modelo");
 
 const SubmitTemplate = () => {
   const navigate = useNavigate();
@@ -52,6 +50,19 @@ const SubmitTemplate = () => {
               <p className="text-sm text-muted-foreground">
                 Abra a conversa no WhatsApp e encaminhe o print do modelo. Nossa equipe irá categorizar e publicar em breve.
               </p>
+
+              {/* QR Code */}
+              <div className="flex justify-center py-2">
+                <img
+                  src="/qrcode-whatsapp.svg"
+                  alt="QR Code para enviar modelo via WhatsApp"
+                  className="w-48 h-48 rounded-xl border bg-white p-2"
+                />
+              </div>
+              <p className="text-xs text-center text-muted-foreground">
+                Escaneie o QR Code acima ou clique no botão abaixo
+              </p>
+
               <a
                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=${WHATSAPP_MESSAGE}`}
                 target="_blank"
