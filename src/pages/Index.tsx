@@ -39,6 +39,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <SponsorsSection variant="banner" />
       
       {/* Hero */}
       <section className="relative overflow-hidden py-16 md:py-24">
@@ -146,8 +147,8 @@ const Index = () => {
         )}
       </section>
 
-      {/* Sponsors */}
-      <SponsorsSection />
+      {/* Sponsors footer */}
+      <SponsorsSection variant="footer" />
 
       {/* How to contribute - at the bottom */}
       <section className="container pb-16">
