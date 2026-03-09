@@ -7,6 +7,7 @@ import { usePublishedTemplates } from "@/lib/hooks";
 import { Layers, Mail, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { SponsorsSection } from "@/components/SponsorsSection";
 
 const TEMPLATES_PER_PAGE = 6;
 
