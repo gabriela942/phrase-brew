@@ -58,6 +58,7 @@ const TemplateDetail = () => {
           brand: editForm.brand || null,
           market_type: editForm.market_type || null,
           template_type: editForm.template_type as any,
+          category_id: editForm.category_id || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id);
