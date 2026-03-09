@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTemplate, incrementCopyCount } from "@/lib/hooks";
+import { useTemplate, useCategories, incrementCopyCount } from "@/lib/hooks";
 import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,10 @@ const TemplateDetail = () => {
   const queryClient = useQueryClient();
   const { data: template, isLoading } = useTemplate(id!);
 
+  const { data: categories } = useCategories();
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "" });
+  const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "" });
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
@@ -42,6 +43,7 @@ const TemplateDetail = () => {
       brand: template.brand || "",
       market_type: template.market_type || "",
       template_type: template.template_type,
+      category_id: template.category_id || "",
     });
     setEditOpen(true);
   };
@@ -56,6 +58,7 @@ const TemplateDetail = () => {
           brand: editForm.brand || null,
           market_type: editForm.market_type || null,
           template_type: editForm.template_type as any,
+          category_id: editForm.category_id || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id);
@@ -282,6 +285,21 @@ const TemplateDetail = () => {
                   <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
                   <SelectItem value="sms">📱 SMS</SelectItem>
                   <SelectItem value="push">🔔 Push</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Categoria</Label>
+              <Select value={editForm.category_id} onValueChange={(v) => setEditForm({ ...editForm, category_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories?.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.icon ? `${c.icon} ` : ""}{c.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
