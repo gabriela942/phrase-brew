@@ -65,11 +65,13 @@ const TemplateDetail = () => {
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ["template", id] });
+      await queryClient.invalidateQueries({ queryKey: ["template", id] });
+      await queryClient.refetchQueries({ queryKey: ["template", id] });
       queryClient.invalidateQueries({ queryKey: ["templates"] });
       toast.success("Template corrigido com sucesso!");
       setEditOpen(false);
-    } catch {
+    } catch (err) {
+      console.error("Erro ao salvar:", err);
       toast.error("Erro ao salvar correção.");
     } finally {
       setSaving(false);
