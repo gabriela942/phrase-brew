@@ -147,10 +147,7 @@ const Index = () => {
         )}
       </section>
 
-      {/* Sponsors footer */}
-      <SponsorsSection variant="footer" />
-
-      {/* How to contribute - at the bottom */}
+      {/* How to contribute */}
       <section className="container pb-16">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -246,6 +243,9 @@ const Index = () => {
           </div>
         </motion.div>
       </section>
+
+      {/* Sponsors footer */}
+      <SponsorsSection variant="footer" />
     </div>
   );
 };
