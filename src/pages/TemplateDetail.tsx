@@ -60,6 +60,7 @@ const TemplateDetail = () => {
           market_type: editForm.market_type || null,
           template_type: editForm.template_type as any,
           category_id: editForm.category_id || null,
+          tags: editForm.tags ? editForm.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
           updated_at: new Date().toISOString(),
         })
         .eq("id", template.id);
