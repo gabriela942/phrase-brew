@@ -2,3 +2,6 @@ project_id = "ebjgfjjfekalpgmibaea"
 
 [functions.ingest-gmail]
 verify_jwt = false
+
+[functions.receive-whatsapp]
+verify_jwt = false
