@@ -32,6 +32,8 @@ const TemplateDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "", tags: "" });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
