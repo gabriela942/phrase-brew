@@ -189,9 +189,16 @@ const TemplateDetail = () => {
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
           </Button>
-          <Button variant="outline" size="sm" onClick={openEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Corrigir informações
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={openEdit}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Corrigir informações
+            </Button>
+            {isAdmin && (
+              <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+              </Button>
+            )}
+          </div>
         </div>
 
         <motion.div
