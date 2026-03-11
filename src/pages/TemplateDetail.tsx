@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,8 @@ const TemplateDetail = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "", tags: "" });
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
@@ -114,6 +116,24 @@ const TemplateDetail = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!template) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("templates").delete().eq("id", template.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Template excluído com sucesso!");
+      navigate("/");
+    } catch (err) {
+      console.error("Erro ao excluir:", err);
+      toast.error("Erro ao excluir template.");
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
   const handleCopyText = async () => {
     if (!template) return;
     const text = isHtml ? stripHtmlToText(template.content) : template.content;
@@ -169,9 +189,16 @@ const TemplateDetail = () => {
           <Button variant="ghost" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
           </Button>
-          <Button variant="outline" size="sm" onClick={openEdit}>
-            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Corrigir informações
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={openEdit}>
+              <Pencil className="h-3.5 w-3.5 mr-1.5" /> Corrigir informações
+            </Button>
+            {isAdmin && (
+              <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+              </Button>
+            )}
+          </div>
         </div>
 
         <motion.div
@@ -355,6 +382,24 @@ const TemplateDetail = () => {
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
             <Button onClick={handleSaveEdit} disabled={saving}>
               {saving ? "Salvando..." : isAdmin ? "Salvar correção" : "Enviar para revisão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="font-display">Excluir template</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja excluir este template? Essa ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Excluindo..." : "Confirmar exclusão"}
             </Button>
           </DialogFooter>
         </DialogContent>
