@@ -116,6 +116,24 @@ const TemplateDetail = () => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!template) return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from("templates").delete().eq("id", template.id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["templates"] });
+      toast.success("Template excluído com sucesso!");
+      navigate("/");
+    } catch (err) {
+      console.error("Erro ao excluir:", err);
+      toast.error("Erro ao excluir template.");
+    } finally {
+      setDeleting(false);
+      setDeleteOpen(false);
+    }
+  };
+
   const handleCopyText = async () => {
     if (!template) return;
     const text = isHtml ? stripHtmlToText(template.content) : template.content;
