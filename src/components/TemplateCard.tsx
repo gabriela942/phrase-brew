@@ -4,7 +4,6 @@ import { incrementCopyCount } from "@/lib/hooks";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useRef } from "react";
 
 interface TemplateCardProps {
   id: string;
@@ -24,7 +23,6 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
   const navigate = useNavigate();
   const isHtml = /<[^>]+>/.test(content);
   const isImage = isImageUrl(content);
-  const isEmail = template_type === "email";
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,21 +43,25 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4 }}
-      transition={{ duration: 0.2 }}
-      className="group relative bg-card rounded-xl border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer overflow-hidden flex flex-col"
+      whileHover={{ y: -6, transition: { duration: 0.2 } }}
+      transition={{ duration: 0.3 }}
+      className="group relative bg-card rounded-2xl border border-border/60 shadow-card hover:shadow-card-hover transition-all duration-300 cursor-pointer overflow-hidden flex flex-col gradient-border"
       onClick={() => navigate(`/template/${id}`)}
     >
-      {/* Image preview for whatsapp/sms/push */}
+      {/* Preview area */}
       {isImage ? (
-        <div className="relative w-full h-[280px] overflow-hidden border-b bg-muted">
-          <img src={content} alt={brand || "Template"} className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/80" />
+        <div className="relative w-full h-[260px] overflow-hidden bg-muted/30">
+          <img
+            src={content}
+            alt={brand || "Template"}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent opacity-60" />
         </div>
       ) : isHtml ? (
-        <div className="relative w-full h-[280px] overflow-hidden border-b bg-background">
+        <div className="relative w-full h-[260px] overflow-hidden bg-muted/10">
           <iframe
             title={title}
             sandbox=""
@@ -67,37 +69,44 @@ export function TemplateCard({ id, title, content, template_type, copies_count, 
             className="w-full h-full border-0 pointer-events-none"
             style={{ transform: "scale(0.5)", transformOrigin: "top left", width: "200%", height: "200%" }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-card/80" />
+          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/20 to-transparent opacity-60" />
         </div>
       ) : (
-        <div className="p-5 pb-3">
-          <p className="text-sm text-muted-foreground line-clamp-4 font-body">{content}</p>
+        <div className="p-5 pb-3 min-h-[100px]">
+          <p className="text-sm text-muted-foreground line-clamp-4 font-body leading-relaxed">{content}</p>
         </div>
       )}
 
       {/* Card footer */}
-      <div className="p-4 pt-3 mt-auto space-y-2">
+      <div className="p-4 pt-3 mt-auto space-y-2.5">
         {brand && (
-          <h3 className="font-display font-semibold text-card-foreground text-base leading-tight">{brand}</h3>
+          <h3 className="font-display font-semibold text-card-foreground text-base leading-tight truncate">
+            {brand}
+          </h3>
         )}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-wrap">
-            {formattedDate && (
-              <span className="text-xs text-muted-foreground">{formattedDate}</span>
-            )}
+
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+            <TypeBadge type={template_type} />
             {categories && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-muted/70 text-muted-foreground font-medium truncate max-w-[120px]">
                 {categories.name}
               </span>
             )}
-            <TypeBadge type={template_type} />
           </div>
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1 text-xs text-destructive hover:text-destructive/80 transition-colors"
-          >
-            <Heart className="h-3.5 w-3.5 fill-current" /> {copies_count}
-          </button>
+
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {formattedDate && (
+              <span className="text-[11px] text-muted-foreground/70 hidden sm:inline">{formattedDate}</span>
+            )}
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors group/heart"
+            >
+              <Heart className="h-3.5 w-3.5 fill-current transition-transform group-hover/heart:scale-110" />
+              {copies_count}
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>

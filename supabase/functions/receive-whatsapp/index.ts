@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-webhook-secret",
 };
 
 Deno.serve(async (req) => {
@@ -11,12 +11,21 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate shared secret — must be set via: supabase secrets set WHATSAPP_WEBHOOK_SECRET=<value>
+  const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
+  const providedSecret = req.headers.get("x-webhook-secret");
+  if (!expectedSecret || providedSecret !== expectedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const body = await req.json();
 
     // ManyChat sends data like:
     // { image_url, phone, name, message_text }
-    // Adapt field names based on your ManyChat "External Request" config
     const imageUrl = body.image_url || body.attachment_url || body.file_url || null;
     const phone = body.phone || body.user_phone || null;
     const name = body.name || body.user_name || body.first_name || null;
@@ -34,7 +43,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Build submission record
     const submission: Record<string, unknown> = {
       source: "whatsapp",
       template_type: ["email", "whatsapp", "sms", "push"].includes(templateType)

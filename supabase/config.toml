@@ -1,4 +1,4 @@
-project_id = "ebjgfjjfekalpgmibaea"
+project_id = "zxoedlfvsccbmytnybah"
 
 [functions.ingest-gmail]
 verify_jwt = false

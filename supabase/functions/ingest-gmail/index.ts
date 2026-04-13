@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-ingest-secret",
 };
 
 async function getAccessToken(): Promise<string> {
@@ -107,6 +107,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate shared secret — must be set via: supabase secrets set GMAIL_INGEST_SECRET=<value>
+  const expectedSecret = Deno.env.get("GMAIL_INGEST_SECRET");
+  const providedSecret = req.headers.get("x-ingest-secret");
+  if (!expectedSecret || providedSecret !== expectedSecret) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   try {
     const accessToken = await getAccessToken();
     const supabase = createClient(
@@ -131,7 +141,6 @@ Deno.serve(async (req) => {
     let ingested = 0;
 
     for (const msg of messages) {
-      // Get full message
       const msgRes = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msg.id}?format=full`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -149,11 +158,9 @@ Deno.serve(async (req) => {
       const from = getHeader(fullMsg, "From") || "Desconhecido";
       const { text: plainBody, html: htmlBody } = extractBodies(fullMsg);
 
-      // Extract brand from sender (domain or name)
       const brandMatch = from.match(/^(.+?)\s*</);
       const brand = brandMatch ? brandMatch[1].trim().replace(/"/g, "") : from.split("@")[0];
 
-      // Insert into submissions
       const { error: insertError } = await supabase.from("submissions").insert({
         template_type: "email",
         source: "gmail",

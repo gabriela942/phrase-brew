@@ -6,44 +6,50 @@
 
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 230 25% 12%;
+    --background: 225 25% 97%;
+    --foreground: 230 30% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 230 25% 12%;
+    --card-foreground: 230 30% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 230 25% 12%;
+    --popover-foreground: 230 30% 10%;
 
-    --primary: 250 84% 54%;
+    --primary: 252 80% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 168 76% 42%;
+    --secondary: 168 72% 40%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 220 16% 93%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 225 18% 93%;
+    --muted-foreground: 225 12% 50%;
 
-    --accent: 38 95% 60%;
+    --accent: 36 100% 57%;
     --accent-foreground: 30 60% 12%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 16% 88%;
-    --input: 220 16% 88%;
-    --ring: 250 84% 54%;
+    --border: 225 18% 90%;
+    --input: 225 18% 90%;
+    --ring: 252 80% 56%;
 
     --radius: 0.75rem;
 
     /* Custom tokens */
-    --email-color: 250 84% 54%;
-    --whatsapp-color: 142 70% 45%;
-    --sms-color: 38 95% 55%;
-    --gradient-hero: linear-gradient(135deg, hsl(250 84% 54%), hsl(280 80% 55%), hsl(320 72% 55%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 20% 98%));
-    --shadow-card: 0 4px 24px -4px hsl(230 25% 12% / 0.08);
-    --shadow-card-hover: 0 12px 32px -8px hsl(230 25% 12% / 0.15);
+    --email-color: 252 80% 56%;
+    --whatsapp-color: 145 65% 42%;
+    --sms-color: 36 100% 52%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(252 80% 56%), hsl(280 75% 58%), hsl(320 70% 56%));
+    --gradient-hero-soft: linear-gradient(135deg, hsl(252 80% 56% / 0.08), hsl(280 75% 58% / 0.06), hsl(320 70% 56% / 0.04));
+    --gradient-glass: linear-gradient(135deg, hsl(0 0% 100% / 0.8), hsl(0 0% 100% / 0.5));
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(225 25% 98%));
+    --gradient-border: linear-gradient(135deg, hsl(252 80% 56% / 0.2), hsl(280 75% 58% / 0.15), hsl(320 70% 56% / 0.1));
+
+    --shadow-card: 0 1px 3px hsl(230 30% 10% / 0.04), 0 4px 16px -2px hsl(230 30% 10% / 0.06);
+    --shadow-card-hover: 0 4px 12px hsl(230 30% 10% / 0.06), 0 16px 40px -8px hsl(252 80% 56% / 0.12);
+    --shadow-elevated: 0 8px 32px -4px hsl(230 30% 10% / 0.1), 0 2px 8px hsl(230 30% 10% / 0.04);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -56,25 +62,34 @@
   }
 
   .dark {
-    --background: 230 25% 8%;
+    --background: 230 28% 7%;
     --foreground: 220 20% 95%;
-    --card: 230 20% 12%;
+    --card: 230 24% 11%;
     --card-foreground: 220 20% 95%;
-    --popover: 230 20% 12%;
+    --popover: 230 24% 11%;
     --popover-foreground: 220 20% 95%;
-    --primary: 250 84% 64%;
+    --primary: 252 80% 66%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 168 76% 50%;
+    --secondary: 168 72% 48%;
     --secondary-foreground: 0 0% 100%;
-    --muted: 230 16% 18%;
-    --muted-foreground: 220 10% 60%;
-    --accent: 38 95% 60%;
+    --muted: 230 20% 16%;
+    --muted-foreground: 220 12% 58%;
+    --accent: 36 100% 57%;
     --accent-foreground: 30 60% 12%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 230 16% 20%;
-    --input: 230 16% 20%;
-    --ring: 250 84% 64%;
+    --border: 230 20% 18%;
+    --input: 230 20% 18%;
+    --ring: 252 80% 66%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(252 80% 66%), hsl(280 75% 62%), hsl(320 70% 60%));
+    --gradient-hero-soft: linear-gradient(135deg, hsl(252 80% 66% / 0.1), hsl(280 75% 62% / 0.08), hsl(320 70% 60% / 0.05));
+    --gradient-glass: linear-gradient(135deg, hsl(230 24% 11% / 0.8), hsl(230 24% 11% / 0.5));
+    --gradient-border: linear-gradient(135deg, hsl(252 80% 66% / 0.25), hsl(280 75% 62% / 0.2), hsl(320 70% 60% / 0.15));
+    --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.2), 0 4px 16px -2px hsl(0 0% 0% / 0.25);
+    --shadow-card-hover: 0 4px 12px hsl(0 0% 0% / 0.2), 0 16px 40px -8px hsl(252 80% 66% / 0.15);
+    --shadow-elevated: 0 8px 32px -4px hsl(0 0% 0% / 0.3), 0 2px 8px hsl(0 0% 0% / 0.15);
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -91,11 +106,11 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Inter', sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
   }
 }
 
@@ -109,10 +124,60 @@
   .bg-gradient-hero {
     background: var(--gradient-hero);
   }
+  .bg-gradient-hero-soft {
+    background: var(--gradient-hero-soft);
+  }
   .shadow-card {
     box-shadow: var(--shadow-card);
   }
   .shadow-card-hover {
     box-shadow: var(--shadow-card-hover);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: var(--gradient-glass);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  }
+  .glass-subtle {
+    background: hsl(var(--card) / 0.6);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  }
+
+  /* Gradient border trick */
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: var(--gradient-border);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    pointer-events: none;
+  }
+
+  /* Decorative floating orbs for hero */
+  .hero-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
   }
 }
