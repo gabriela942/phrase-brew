@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTemplate, useCategories, incrementCopyCount } from "@/lib/hooks";
-import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil, Trash2, FileText, Heart, Check } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { useOptimisticLike } from "@/hooks/useOptimisticLike";
+import { copyTextRobust } from "@/lib/copyText";
+import { cn } from "@/lib/utils";
 
 const MARKET_TYPES = ["Infoproduto", "SaaS", "Serviços", "E-commerce/Varejo"];
 
@@ -34,6 +36,12 @@ const TemplateDetail = () => {
   const [editForm, setEditForm] = useState({ brand: "", market_type: "", template_type: "", category_id: "", tags: "" });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const { liked, count: likesCount, toggleLike } = useOptimisticLike(
+    id ?? "",
+    template?.copies_count ?? 0
+  );
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
@@ -134,47 +142,90 @@ const TemplateDetail = () => {
     }
   };
 
+  const safeFilename = template
+    ? template.title.replace(/[^a-zA-Z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 60) || template.id
+    : "template";
+
   const handleCopyText = async () => {
     if (!template) return;
     const text = isHtml ? stripHtmlToText(template.content) : template.content;
-    await navigator.clipboard.writeText(text);
-    await incrementCopyCount(template.id);
-    toast.success("Texto copiado!");
+
+    // ── DEBUG ────────────────────────────────────────────────────────────────
+    console.log("[TemplateDetail] document.hasFocus()", document.hasFocus());
+    console.log("[TemplateDetail] activeElement", document.activeElement);
+    console.log("[TemplateDetail] text length", text?.length);
+    console.log("[TemplateDetail] isHtml", isHtml);
+
+    const success = await copyTextRobust(text);
+
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+      toast.success("Texto copiado!");
+      void incrementCopyCount(template.id);
+    } else {
+      const focusInIframe =
+        document.activeElement?.tagName?.toLowerCase() === "iframe";
+      console.error(
+        "[TemplateDetail] Todas as tentativas de cópia falharam. focus estava em iframe?",
+        focusInIframe
+      );
+      toast.error("Não foi possível copiar");
+    }
+  };
+
+  const downloadFile = (filename: string, content: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDownloadHtml = () => {
     if (!template) return;
     const html = isHtml
       ? template.content
-      : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${template.title}</title></head><body><pre style="white-space:pre-wrap;font-family:sans-serif;">${template.content}</pre></body></html>`;
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${template.title.replace(/[^a-zA-Z0-9]/g, "_")}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+      : `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>${template.title}</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; line-height: 1.6; padding: 24px; max-width: 720px; margin: 0 auto;">
+    <h1>${template.title}</h1>
+    ${template.brand ? `<p><strong>Marca:</strong> ${template.brand}</p>` : ""}
+    ${template.market_type ? `<p><strong>Mercado:</strong> ${template.market_type}</p>` : ""}
+    <hr>
+    <div>${template.content.replace(/\n/g, "<br>")}</div>
+  </body>
+</html>`;
+    downloadFile(`${safeFilename}.html`, html, "text/html;charset=utf-8");
     toast.success("HTML baixado!");
+  };
+
+  const handleDownloadTxt = () => {
+    if (!template) return;
+    const text = isHtml ? stripHtmlToText(template.content) : template.content;
+    downloadFile(`${safeFilename}.txt`, text, "text/plain;charset=utf-8");
+    toast.success("TXT baixado!");
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container py-8">
-          <div className="h-96 bg-muted animate-pulse rounded-xl" />
-        </div>
+      <div className="container py-8">
+        <div className="h-96 bg-muted animate-pulse rounded-xl" />
       </div>
     );
   }
 
   if (!template) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container py-16 text-center">
-          <p className="text-muted-foreground">Template não encontrado.</p>
-        </div>
+      <div className="container py-16 text-center">
+        <p className="text-muted-foreground">Template não encontrado.</p>
       </div>
     );
   }
@@ -182,13 +233,9 @@ const TemplateDetail = () => {
   const cat = template.categories as { name: string; icon: string | null } | null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <>
       <div className="container py-8 max-w-5xl">
-        <div className="flex items-center justify-between mb-6">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
-          </Button>
+        <div className="flex items-center justify-end mb-6">
           {isAdmin && (
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={openEdit}>
@@ -255,7 +302,7 @@ const TemplateDetail = () => {
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               {isImage ? (
                 <Button size="lg" variant="hero" asChild>
                   <a href={template.content} target="_blank" rel="noopener noreferrer">
@@ -265,13 +312,36 @@ const TemplateDetail = () => {
               ) : (
                 <>
                   <Button size="lg" variant="hero" onClick={handleCopyText}>
-                    <Copy className="h-4 w-4 mr-2" /> Copiar Texto
+                    {copied ? (
+                      <><Check className="h-4 w-4 mr-2" /> Copiado!</>
+                    ) : (
+                      <><Copy className="h-4 w-4 mr-2" /> Copiar template</>
+                    )}
                   </Button>
                   <Button size="lg" variant="outline" onClick={handleDownloadHtml}>
                     <Download className="h-4 w-4 mr-2" /> Baixar HTML
                   </Button>
+                  <Button size="lg" variant="outline" onClick={handleDownloadTxt}>
+                    <FileText className="h-4 w-4 mr-2" /> Baixar TXT
+                  </Button>
                 </>
               )}
+
+              {/* Like button — community curtida */}
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={toggleLike}
+                aria-pressed={liked}
+                aria-label={liked ? "Descurtir template" : "Curtir template"}
+                className={cn(
+                  "ml-auto",
+                  liked && "text-rose-500 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 hover:text-rose-500"
+                )}
+              >
+                <Heart className={cn("h-4 w-4 mr-2", liked && "fill-current")} />
+                {likesCount}
+              </Button>
             </div>
 
             {template.variables && template.variables.length > 0 && (
@@ -404,7 +474,7 @@ const TemplateDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

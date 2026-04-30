@@ -1,30 +1,20 @@
-import { useNavigate } from "react-router-dom";
-import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowLeft, Mail, MessageCircle } from "lucide-react";
+import { Mail, MessageCircle } from "lucide-react";
 
 const WHATSAPP_NUMBER = "5511985623273";
 const WHATSAPP_MESSAGE = encodeURIComponent("enviar_modelo");
 
 const SubmitTemplate = () => {
-  const navigate = useNavigate();
-
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="container py-8 max-w-2xl">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-6"
-        >
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
-          </Button>
-
-          <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">Enviar Modelo</h1>
+    <div className="container py-8 max-w-2xl">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        <div>
+          <h1 className="font-display text-3xl font-bold text-foreground">Enviar Modelo</h1>
             <p className="text-muted-foreground mt-1">
               Contribua com prints de mensagens reais para a comunidade. Escolha o canal abaixo:
             </p>
@@ -105,7 +95,6 @@ const SubmitTemplate = () => {
           </div>
         </motion.div>
       </div>
-    </div>
   );
 };
 

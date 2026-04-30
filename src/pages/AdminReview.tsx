@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Navbar } from "@/components/Navbar";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,111 +13,22 @@ import { useCategories } from "@/lib/hooks";
 import { toast } from "sonner";
 import { ArrowLeft, Check, X, Save, RefreshCw } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  cleanTitle,
+  sanitizeEmailHtml,
+  extractOriginalSender,
+  extractBrandFromSender,
+  guessCategoryFromContent,
+  guessFieldsFromContent,
+  stripHtml,
+  publishSubmissionToTemplate,
+  unpublishSubmissionTemplates,
+  type CategoryOption,
+} from "@/lib/submissions";
+import { invalidateAdminSubmissions } from "@/hooks/useSubmissionCounts";
 
 type TemplateType = Database["public"]["Enums"]["template_type"];
 type ToneType = Database["public"]["Enums"]["tone_type"];
-
-function extractBrandFromSender(rawFrom: string | null): string {
-  if (!rawFrom) return "";
-  const nameMatch = rawFrom.match(/^"?([^"<]+)"?\s*</);
-  if (nameMatch) return nameMatch[1].trim();
-  const emailMatch = rawFrom.match(/([^@]+)@/);
-  return emailMatch ? emailMatch[1].trim() : rawFrom;
-}
-
-/** Extract the original sender from forwarded message HTML */
-function extractOriginalSender(html: string): string {
-  // Look for "De: <strong>Name</strong>" pattern in gmail_attr
-  const match = html.match(/De:\s*<strong[^>]*>([^<]+)<\/strong>/i);
-  if (match) return match[1].trim();
-  // Fallback: "From: Name" in plain text
-  const plainMatch = html.match(/(?:From|De)\s*:\s*([^\n<]+)/i);
-  if (plainMatch) return plainMatch[1].replace(/<[^>]*>/g, "").replace(/[<>]/g, "").trim();
-  return "";
-}
-
-function cleanTitle(title: string): string {
-  return title.replace(/^(Fwd|Fw|Re|Enc|Res)\s*:\s*/gi, "").trim();
-}
-
-interface CategoryOption { id: string; name: string; slug: string; icon: string | null }
-
-function guessCategoryFromContent(content: string, subject: string, categories: CategoryOption[]): string {
-  if (!categories?.length) return "";
-  const lower = (content + " " + subject).toLowerCase();
-  for (const cat of categories) {
-    const keywords = cat.slug.split("-");
-    if (keywords.some((kw) => kw.length > 2 && lower.includes(kw))) return cat.id;
-    if (lower.includes(cat.name.toLowerCase())) return cat.id;
-  }
-  return "";
-}
-
-function guessFieldsFromContent(content: string, subject: string) {
-  const lower = (content + " " + subject).toLowerCase();
-
-  let tone: ToneType | "" = "";
-  if (/urgente|última chance|corra|não perca|expira/i.test(lower)) tone = "urgent";
-  else if (/prezado|senhor|formal|cordialmente/i.test(lower)) tone = "formal";
-  else if (/hey|oi|fala|beleza|e aí/i.test(lower)) tone = "casual";
-  else if (/amigo|querido|carinho|abraço/i.test(lower)) tone = "friendly";
-  else tone = "direct";
-
-  let persona = "";
-  if (/empresa|negócio|b2b|corporat|parceiro|cnpj/i.test(lower)) persona = "b2b";
-  else if (/você|cliente|compra|pedido|oferta|desconto|cupom/i.test(lower)) persona = "b2c";
-
-  const tagSet = new Set<string>();
-  if (/promoção|desconto|oferta|cupom|% off/i.test(lower)) tagSet.add("promoção");
-  if (/boas-vindas|bem-vindo|welcome|onboarding/i.test(lower)) tagSet.add("onboarding");
-  if (/newsletter|novidades|atualização/i.test(lower)) tagSet.add("newsletter");
-  if (/abandono|carrinho|cart/i.test(lower)) tagSet.add("carrinho abandonado");
-  if (/transacional|confirmação|pedido|entrega|tracking/i.test(lower)) tagSet.add("transacional");
-  if (/reengaj|reativação|sentimos sua falta|volte/i.test(lower)) tagSet.add("reengajamento");
-  if (/nps|pesquisa|feedback|avaliação/i.test(lower)) tagSet.add("feedback");
-
-  const variables: string[] = [];
-  const varMatches = content.match(/\{[^}]+\}/g);
-  if (varMatches) varMatches.forEach((v) => variables.push(v));
-  if (/\[nome\]|\[name\]/i.test(content)) variables.push("{nome}");
-
-  let marketType = "";
-  if (/e-commerce|loja|compra|produto|frete|varejo/i.test(lower)) marketType = "E-commerce/Varejo";
-  else if (/saas|software|plataforma|assinatura|trial/i.test(lower)) marketType = "SaaS";
-  else if (/serviço|saúde|médico|clínica|consulta|food|comida|restaurante|delivery|fintech|banco|cartão|crédito|investimento/i.test(lower)) marketType = "Serviços";
-  else if (/educação|curso|aula|professor|mentoria|conteúdo|infoproduto|marketing|digital|social|instagram|tráfego|copy/i.test(lower)) marketType = "Infoproduto";
-
-  return { tone, persona, tags: Array.from(tagSet).join(", "), variables: variables.join(", "), marketType };
-}
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
-}
-
-/** Sanitize HTML: remove forwarded message headers, To/From lines, and email addresses */
-function sanitizeEmailHtml(html: string): string {
-  let sanitized = html;
-  // Remove the entire gmail_attr div (contains forwarded message header with From/To/Date/Subject)
-  sanitized = sanitized.replace(/<div[^>]*class="[^"]*gmail_attr[^"]*"[^>]*>[\s\S]*?<\/div>/gi, "");
-  // Remove the outer gmail_quote wrapper divs but keep inner content
-  sanitized = sanitized.replace(/<div[^>]*class="[^"]*gmail_quote[^"]*"[^>]*>/gi, "<div>");
-  // Remove any remaining "---------- Forwarded message ---------" text
-  sanitized = sanitized.replace(/-{5,}\s*Forwarded message\s*-{5,}/gi, "");
-  // Remove standalone forwarded message blocks (plain text style)
-  sanitized = sanitized.replace(/^(From|To|De|Para|Sent|Enviado para|Date|Data|Subject|Assunto)\s*:.*$/gim, "");
-  // Remove all email addresses
-  sanitized = sanitized.replace(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g, "");
-  // Remove mailto: links but keep the link text
-  sanitized = sanitized.replace(/<a[^>]*href=["']mailto:[^"']*["'][^>]*>(.*?)<\/a>/gi, "$1");
-  // Remove &lt;email&gt; patterns
-  sanitized = sanitized.replace(/&lt;\s*&gt;/g, "");
-  sanitized = sanitized.replace(/<\s*>/g, "");
-  // Clean up empty tags left behind
-  sanitized = sanitized.replace(/<(div|span|p|td|font|strong)[^>]*>\s*<\/\1>/gi, "");
-  // Clean up leading empty divs/brs at the start
-  sanitized = sanitized.replace(/^(\s*<(div|br)[^>]*>\s*)+/i, "");
-  return sanitized;
-}
 
 const AdminReview = () => {
   const { id } = useParams<{ id: string }>();
@@ -199,13 +109,13 @@ const AdminReview = () => {
         template_type: submission.template_type,
         content,
         category_id: guessedCategory,
-        tags: submission.suggested_tags?.join(", ") || guessed.tags,
+        tags: submission.suggested_tags?.join(", ") || guessed.tags.join(", "),
         tone: guessed.tone,
         persona: guessed.persona,
-        variables: guessed.variables,
+        variables: guessed.variables.join(", "),
         notes: submission.notes || "",
         brand: brand,
-        market_type: submission.market_type || guessed.marketType,
+        market_type: submission.market_type || guessed.market_type,
       });
     }
   }, [submission, categories]);
@@ -223,59 +133,44 @@ const AdminReview = () => {
     market_type: form.market_type || null,
   };
 
-  const handleApprove = async () => {
+  // handleApprove and handleUpdate share the same flow now: publish the
+  // submission as a public template, applying the user-edited form values as
+  // overrides on top of the auto-detected payload. Idempotent — works whether
+  // a template already exists for this submission or not.
+  const handlePublish = async () => {
+    if (!submission) return;
     if (!form.content) {
       toast.error("Conteúdo é obrigatório.");
       return;
     }
 
-    const { error: templateError } = await supabase.from("templates").insert({
-      ...templatePayload,
-      submission_id: id,
-      status: "published",
-      published_at: new Date().toISOString(),
+    const result = await publishSubmissionToTemplate(submission, {
+      overrides: { ...templatePayload },
+      submissionNotes: form.notes,
+      categories: (categories || []) as CategoryOption[],
     });
 
-    if (templateError) {
-      toast.error("Erro ao criar template.");
+    if (!result.ok) {
+      toast.error(`Erro ao publicar: ${result.error ?? "desconhecido"}`);
       return;
     }
 
-    await supabase.from("submissions").update({ status: "approved", notes: form.notes }).eq("id", id!);
-    queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
-    queryClient.invalidateQueries({ queryKey: ["templates"] });
-    toast.success("Template aprovado e publicado!");
-    navigate("/admin");
-  };
-
-  const handleUpdate = async () => {
-    if (!existingTemplate?.id) return;
-    if (!form.content) {
-      toast.error("Conteúdo é obrigatório.");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("templates")
-      .update({ ...templatePayload, updated_at: new Date().toISOString() })
-      .eq("id", existingTemplate.id);
-
-    if (error) {
-      toast.error("Erro ao atualizar template.");
-      return;
-    }
-
-    await supabase.from("submissions").update({ status: "approved", notes: form.notes }).eq("id", id!);
-    queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+    invalidateAdminSubmissions(queryClient);
     queryClient.invalidateQueries({ queryKey: ["templates"] });
     queryClient.invalidateQueries({ queryKey: ["existing-template", id] });
-    toast.success("Template atualizado!");
+    toast.success(
+      result.action === "updated" ? "Template atualizado!" : "Template aprovado e publicado!"
+    );
     navigate("/admin");
   };
 
   const handleReject = async () => {
+    if (!submission) return;
     await supabase.from("submissions").update({ status: "rejected", notes: form.notes }).eq("id", id!);
-    queryClient.invalidateQueries({ queryKey: ["admin-submissions"] });
+    // Despublish associated template so it leaves the public library
+    await unpublishSubmissionTemplates([submission.id]);
+    invalidateAdminSubmissions(queryClient);
+    queryClient.invalidateQueries({ queryKey: ["templates"] });
     toast.success("Submissão reprovada.");
     navigate("/admin");
   };
@@ -288,20 +183,16 @@ const AdminReview = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container py-8"><div className="h-96 bg-muted animate-pulse rounded-xl" /></div>
+      <div className="container py-8">
+        <div className="h-96 bg-muted animate-pulse rounded-xl" />
       </div>
     );
   }
 
   if (!submission) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container py-16 text-center">
-          <p className="text-muted-foreground">Submissão não encontrada.</p>
-        </div>
+      <div className="container py-16 text-center">
+        <p className="text-muted-foreground">Submissão não encontrada.</p>
       </div>
     );
   }
@@ -311,9 +202,7 @@ const AdminReview = () => {
   const isSubmissionImage = isNonEmail && submission.raw_body && /^https?:\/\//.test(submission.raw_body);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <div className="px-4 py-8 w-full max-w-full">
+    <div className="px-4 py-8 w-full max-w-full">
         <Button variant="ghost" className="mb-6" onClick={() => navigate("/admin")}>
           <ArrowLeft className="h-4 w-4 mr-1" /> Voltar ao Inbox
         </Button>
@@ -515,11 +404,11 @@ const AdminReview = () => {
 
             <div className="flex flex-col gap-2">
               {existingTemplate ? (
-                <Button variant="hero" size="lg" onClick={handleUpdate}>
+                <Button variant="hero" size="lg" onClick={handlePublish}>
                   <RefreshCw className="h-4 w-4 mr-2" /> Atualizar Template
                 </Button>
               ) : (
-                <Button variant="hero" size="lg" onClick={handleApprove}>
+                <Button variant="hero" size="lg" onClick={handlePublish}>
                   <Check className="h-4 w-4 mr-2" /> Aprovar e Publicar
                 </Button>
               )}
@@ -533,7 +422,6 @@ const AdminReview = () => {
           </div>
         </div>
       </div>
-    </div>
   );
 };
 

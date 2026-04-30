@@ -1,187 +1,263 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Navbar } from "@/components/Navbar";
-import { SearchFilters } from "@/components/SearchFilters";
+import { useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { HeroCarousel } from "@/components/HeroCarousel";
 import { TemplateCard } from "@/components/TemplateCard";
+import { ActiveFilterChips } from "@/components/ActiveFilterChips";
+import { TemplatesSection } from "@/components/TemplatesSection";
+import { SiteFooter } from "@/components/SiteFooter";
+import { RotatingHeroText } from "@/components/RotatingHeroText";
+import { ContributeSection } from "@/components/ContributeSection";
 import { usePublishedTemplates } from "@/lib/hooks";
-import { Layers, Mail, ArrowRight, ChevronLeft, ChevronRight, Send, MessageSquare, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
-import { SponsorsSection } from "@/components/SponsorsSection";
+import { useFilters } from "@/layouts/DiscoveryLayout";
+import { Layers, ChevronLeft, ChevronRight } from "lucide-react";
 
-const TEMPLATES_PER_PAGE = 9;
+const PER_PAGE = 9;
+
+// ─── Pagination helpers ───────────────────────────────────────────────────────
+
+function pageNumbers(page: number, total: number) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (page <= 4) return [1, 2, 3, 4, 5, -1, total];
+  if (page >= total - 3)
+    return [1, -1, total - 4, total - 3, total - 2, total - 1, total];
+  return [1, -1, page - 1, page, page + 1, -2, total];
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 const Index = () => {
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [marketFilter, setMarketFilter] = useState("");
-  const [page, setPage] = useState(1);
+  const {
+    search,
+    channels,
+    categoryFilter,
+    marketFilter,
+    brandFilter,
+    tagsFilter,
+    exploreFilter,
+    page,
+    setSearch,
+    setChannels,
+    setCategoryFilter,
+    setMarketFilter,
+    setBrandFilter,
+    setTagsFilter,
+    setExploreFilter,
+    setPage,
+    clearAll,
+  } = useFilters();
+
+  // Ref used by TemplatesSection to know where its sticky toolbar must stop
+  const contributeSectionRef = useRef<HTMLElement>(null);
 
   const { data: templates, isLoading } = usePublishedTemplates({
     search: search || undefined,
-    type: typeFilter || undefined,
-    categoryId: categoryFilter && categoryFilter !== "all" ? categoryFilter : undefined,
-    marketType: marketFilter && marketFilter !== "all" ? marketFilter : undefined,
+    types: channels.length > 0 ? channels : undefined,
+    categoryId:
+      categoryFilter && categoryFilter !== "all" ? categoryFilter : undefined,
+    marketType:
+      marketFilter && marketFilter !== "all" ? marketFilter : undefined,
+    brand: brandFilter && brandFilter !== "all" ? brandFilter : undefined,
+    tags: tagsFilter || undefined,
+    explore: exploreFilter || undefined,
   });
 
-  const totalPages = templates ? Math.ceil(templates.length / TEMPLATES_PER_PAGE) : 1;
-  const paginatedTemplates = templates?.slice((page - 1) * TEMPLATES_PER_PAGE, page * TEMPLATES_PER_PAGE);
+  const totalTemplates = templates?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalTemplates / PER_PAGE));
+  const safePage = Math.min(page, totalPages);
+  const paginatedTemplates = templates?.slice(
+    (safePage - 1) * PER_PAGE,
+    safePage * PER_PAGE
+  );
 
-  const handleFilterChange = (setter: (v: string) => void) => (v: string) => {
-    setter(v);
-    setPage(1);
-  };
+  // Grid re-animation key
+  const gridKey = [
+    channels.join(","),
+    categoryFilter,
+    marketFilter,
+    brandFilter,
+    tagsFilter,
+    exploreFilter,
+    search,
+    safePage,
+  ].join("|");
 
-  // Show max 7 page buttons with ellipsis
-  const getPageNumbers = () => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    if (page <= 4) return [1, 2, 3, 4, 5, -1, totalPages];
-    if (page >= totalPages - 3) return [1, -1, totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    return [1, -1, page - 1, page, page + 1, -2, totalPages];
-  };
+  const hasActiveFilters =
+    search ||
+    channels.length > 0 ||
+    categoryFilter ||
+    marketFilter ||
+    brandFilter ||
+    tagsFilter ||
+    exploreFilter;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-      <SponsorsSection variant="banner" />
+    <>
+      {/* ── Hero: badge + headline + subheadline ─────────────────────────── */}
+      <section className="container pt-10 pb-6">
+        <div className="text-center max-w-[640px] mx-auto space-y-3.5">
 
-      {/* Hero */}
-      <section className="relative overflow-hidden py-20 md:py-28">
-        {/* Decorative orbs */}
-        <div className="hero-orb w-[500px] h-[500px] bg-primary/15 -top-60 -left-40" />
-        <div className="hero-orb w-[400px] h-[400px] bg-secondary/10 -bottom-40 -right-40" />
-        <div className="hero-orb w-[300px] h-[300px] bg-accent/10 top-20 right-[20%]" />
-
-        <div className="container relative">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-center max-w-3xl mx-auto space-y-6"
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.4 }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/8 border border-primary/15 text-sm font-medium text-primary"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              Biblioteca colaborativa de CRM
-            </motion.div>
-
-            <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight leading-[1.1]">
-              Templates de CRM{" "}
-              <span className="text-gradient-hero">prontos para usar</span>
-            </h1>
-
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Encontre modelos de <strong className="text-foreground/80">Email</strong>,{" "}
-              <strong className="text-foreground/80">WhatsApp</strong>,{" "}
-              <strong className="text-foreground/80">SMS</strong> e{" "}
-              <strong className="text-foreground/80">Push</strong>.
-              Copie e envie em segundos.
-            </p>
-
-            {/* Stats */}
-            {templates && templates.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                className="flex items-center justify-center gap-8 pt-2"
-              >
-                <div className="text-center">
-                  <p className="font-display text-2xl md:text-3xl font-bold text-foreground">{templates.length}</p>
-                  <p className="text-xs text-muted-foreground font-medium">Templates</p>
-                </div>
-                <div className="h-8 w-px bg-border" />
-                <div className="text-center">
-                  <p className="font-display text-2xl md:text-3xl font-bold text-foreground">4</p>
-                  <p className="text-xs text-muted-foreground font-medium">Canais</p>
-                </div>
-                <div className="h-8 w-px bg-border" />
-                <div className="text-center">
-                  <p className="font-display text-2xl md:text-3xl font-bold text-foreground">100%</p>
-                  <p className="text-xs text-muted-foreground font-medium">Gratuito</p>
-                </div>
-              </motion.div>
-            )}
+            <RotatingHeroText />
           </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.45, ease: "easeOut" }}
+            className="font-display font-bold tracking-tight leading-[1.1]"
+            style={{ fontSize: "clamp(1.875rem, 5vw, 3rem)" }}
+          >
+            Templates de CRM{" "}
+            <span className="text-gradient-hero">prontos para usar</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
+            className="text-[15px] text-muted-foreground leading-relaxed"
+          >
+            Encontre, filtre e copie modelos de{" "}
+            <strong className="text-foreground/70 font-medium">Email</strong>,{" "}
+            <strong className="text-foreground/70 font-medium">WhatsApp</strong>,{" "}
+            <strong className="text-foreground/70 font-medium">SMS</strong> e{" "}
+            <strong className="text-foreground/70 font-medium">Push</strong> em
+            segundos.
+          </motion.p>
         </div>
       </section>
 
-      {/* Filters + Grid */}
-      <section className="container pb-20 space-y-8">
-        <SearchFilters
-          search={search}
-          onSearchChange={handleFilterChange(setSearch)}
-          typeFilter={typeFilter}
-          onTypeChange={handleFilterChange(setTypeFilter)}
-          categoryFilter={categoryFilter}
-          onCategoryChange={handleFilterChange(setCategoryFilter)}
-          marketFilter={marketFilter}
-          onMarketChange={handleFilterChange(setMarketFilter)}
-        />
+      {/* ── Hero Carousel ─────────────────────────────────────────────────── */}
+      <motion.section
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.28, duration: 0.5, ease: "easeOut" }}
+        className="container pb-8"
+      >
+        <HeroCarousel />
+      </motion.section>
 
+      {/* ── Template grid — toolbar sticks only while this section is active ── */}
+      <TemplatesSection
+        channels={channels}
+        onChannelsChange={setChannels}
+        resultCount={isLoading ? undefined : totalTemplates}
+        isLoading={isLoading}
+        contributeSectionRef={contributeSectionRef}
+      >
+
+          {/* Active filter chips */}
+          <ActiveFilterChips
+            search={search}
+            channels={channels}
+            categoryFilter={categoryFilter}
+            marketFilter={marketFilter}
+            brandFilter={brandFilter}
+            tagsFilter={tagsFilter}
+            exploreFilter={exploreFilter}
+            onSearchChange={setSearch}
+            onChannelsChange={setChannels}
+            onCategoryChange={setCategoryFilter}
+            onMarketChange={setMarketFilter}
+            onBrandChange={setBrandFilter}
+            onTagsChange={setTagsFilter}
+            onExploreChange={setExploreFilter}
+            onClearAll={clearAll}
+          />
+
+        {/* Loading skeletons */}
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="h-[340px] bg-card rounded-2xl border border-border/40 animate-pulse" />
+            {Array.from({ length: PER_PAGE }).map((_, i) => (
+              <div
+                key={i}
+                className="rounded-[20px] border border-border/40 bg-card animate-pulse"
+                style={{ height: "380px" }}
+              />
             ))}
           </div>
         ) : paginatedTemplates && paginatedTemplates.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {paginatedTemplates.map((t, i) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                >
-                  <TemplateCard
-                    id={t.id}
-                    title={t.title}
-                    content={t.content}
-                    template_type={t.template_type}
-                    copies_count={t.copies_count}
-                    tags={t.tags}
-                    brand={t.brand}
-                    categories={t.categories as any}
-                    published_at={t.published_at}
-                  />
-                </motion.div>
-              ))}
-            </div>
+            {/* Grid with stagger animation */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={gridKey}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+              >
+                {paginatedTemplates.map((t, i) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      delay: i * 0.04,
+                      duration: 0.32,
+                      ease: [0.4, 0, 0.2, 1],
+                    }}
+                  >
+                    <TemplateCard
+                      id={t.id}
+                      title={t.title}
+                      content={t.content}
+                      template_type={t.template_type}
+                      copies_count={t.copies_count}
+                      tags={t.tags}
+                      brand={t.brand}
+                      market_type={t.market_type}
+                      segment={t.segment}
+                      categories={t.categories as any}
+                      published_at={t.published_at}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-1.5 pt-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35 }}
+                className="flex items-center justify-center gap-1.5 pt-10"
+              >
                 <button
-                  disabled={page === 1}
-                  onClick={() => setPage(page - 1)}
+                  disabled={safePage === 1}
+                  onClick={() => setPage(safePage - 1)}
+                  aria-label="Página anterior"
                   className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 disabled:pointer-events-none transition-all"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
 
-                {getPageNumbers().map((n, i) =>
+                {pageNumbers(safePage, totalPages).map((n, i) =>
                   n < 0 ? (
-                    <span key={`ellipsis-${i}`} className="h-9 w-9 flex items-center justify-center text-muted-foreground/50 text-sm">
-                      ...
+                    <span
+                      key={`ellipsis-${i}`}
+                      className="h-9 w-9 flex items-center justify-center text-muted-foreground/40 text-sm select-none"
+                    >
+                      …
                     </span>
                   ) : (
                     <button
                       key={n}
                       onClick={() => setPage(n)}
-                      className={`
-                        h-9 min-w-[36px] px-2 rounded-lg text-sm font-medium transition-all duration-200
-                        ${page === n
+                      aria-label={`Página ${n}`}
+                      aria-current={safePage === n ? "page" : undefined}
+                      className={[
+                        "h-9 min-w-[36px] px-2 rounded-lg text-sm font-medium transition-all duration-200",
+                        safePage === n
                           ? "bg-gradient-hero text-white shadow-md"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                        }
-                      `}
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                      ].join(" ")}
                     >
                       {n}
                     </button>
@@ -189,149 +265,51 @@ const Index = () => {
                 )}
 
                 <button
-                  disabled={page === totalPages}
-                  onClick={() => setPage(page + 1)}
+                  disabled={safePage === totalPages}
+                  onClick={() => setPage(safePage + 1)}
+                  aria-label="Próxima página"
                   className="h-9 w-9 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 disabled:pointer-events-none transition-all"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
-              </div>
+              </motion.div>
             )}
           </>
         ) : (
+          /* Empty state */
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-24 space-y-4"
           >
             <div className="mx-auto w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center">
-              <Layers className="h-7 w-7 text-muted-foreground/60" />
+              <Layers className="h-7 w-7 text-muted-foreground/50" />
             </div>
-            <h3 className="font-display text-xl font-semibold text-foreground">Nenhum template encontrado</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              {search || typeFilter || categoryFilter
-                ? "Tente ajustar seus filtros para encontrar o que procura."
+            <h3 className="font-display text-xl font-semibold text-foreground">
+              Nenhum template encontrado
+            </h3>
+            <p className="text-[14px] text-muted-foreground max-w-sm mx-auto">
+              {hasActiveFilters
+                ? "Tente ajustar os filtros acima para ampliar a busca."
                 : "Seja o primeiro a contribuir com um modelo!"}
             </p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearAll}
+                className="text-[13px] text-primary hover:underline font-medium"
+              >
+                Limpar filtros
+              </button>
+            )}
           </motion.div>
         )}
-      </section>
+      </TemplatesSection>
 
-      {/* How to contribute */}
-      <section className="container pb-20">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.5 }}
-          id="como-contribuir"
-          className="relative bg-card/80 glass-subtle rounded-3xl border border-border/50 shadow-elevated overflow-hidden"
-        >
-          {/* Decorative accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-hero" />
+      {/* ── How to contribute ─────────────────────────────────────────────── */}
+      <ContributeSection ref={contributeSectionRef} />
 
-          <div className="p-6 md:p-10">
-            <div className="text-center max-w-2xl mx-auto mb-8">
-              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/8 border border-primary/15 text-xs font-semibold text-primary uppercase tracking-wider mb-4">
-                <Send className="h-3 w-3" />
-                Contribua
-              </span>
-              <h2 className="font-display text-2xl md:text-3xl font-bold text-card-foreground">
-                Compartilhe com a comunidade
-              </h2>
-              <p className="text-muted-foreground mt-2">
-                Recebeu uma comunicação interessante? Envie para nossa biblioteca!
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-4xl mx-auto">
-              {/* Email card */}
-              <div className="relative bg-background/60 rounded-2xl p-6 space-y-4 border border-border/40 hover:border-primary/20 transition-colors group">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                    <Mail className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-semibold text-foreground">Email</h3>
-                    <p className="text-xs text-muted-foreground">Encaminhe o email original</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <code className="flex-1 text-sm font-mono font-semibold text-primary bg-primary/8 px-4 py-2.5 rounded-xl border border-primary/10">
-                    modelscrm@gmail.com
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="rounded-xl h-[42px] px-4 border-primary/20 hover:bg-primary/5"
-                    onClick={() => {
-                      navigator.clipboard.writeText("modelscrm@gmail.com");
-                      import("sonner").then(({ toast }) => toast.success("Email copiado!"));
-                    }}
-                  >
-                    Copiar
-                  </Button>
-                </div>
-
-                <p className="text-xs text-muted-foreground/70 leading-relaxed">
-                  Encaminhe direto da caixa de entrada para preservar o visual original.
-                </p>
-              </div>
-
-              {/* WhatsApp / SMS / Push card */}
-              <div className="relative bg-background/60 rounded-2xl p-6 space-y-4 border border-border/40 hover:border-secondary/20 transition-colors group">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
-                    <MessageSquare className="h-5 w-5 text-secondary" />
-                  </div>
-                  <div>
-                    <h3 className="font-display font-semibold text-foreground">WhatsApp, SMS & Push</h3>
-                    <p className="text-xs text-muted-foreground">Envie um print da mensagem</p>
-                  </div>
-                </div>
-
-                <div className="flex justify-center py-2">
-                  <img
-                    src="/qrcode-whatsapp.svg"
-                    alt="QR Code WhatsApp"
-                    className="w-32 h-32 rounded-2xl border border-border/40 bg-white p-2.5 shadow-sm"
-                  />
-                </div>
-
-                <a
-                  href="https://wa.me/5511985623273?text=enviar_modelo"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Button size="sm" className="w-full rounded-xl bg-secondary hover:bg-secondary/90 text-secondary-foreground">
-                    Abrir WhatsApp <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-                  </Button>
-                </a>
-              </div>
-            </div>
-
-            {/* Tips */}
-            <div className="mt-8 max-w-2xl mx-auto">
-              <div className="flex items-start gap-3 bg-muted/30 rounded-xl p-4 border border-border/30">
-                <Sparkles className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p className="font-medium text-foreground/80">Dicas para uma boa contribuicao:</p>
-                  <ul className="space-y-0.5 text-xs leading-relaxed">
-                    <li>Para emails, encaminhe diretamente da caixa de entrada</li>
-                    <li>Para WhatsApp, SMS e Push, tire um print claro da mensagem</li>
-                    <li>Todos os modelos sao revisados antes de serem publicados</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Sponsors footer */}
-      <SponsorsSection variant="footer" />
-    </div>
+      <SiteFooter />
+    </>
   );
 };
 

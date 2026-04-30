@@ -1,7 +1,7 @@
 project_id = "zxoedlfvsccbmytnybah"
 
 [functions.ingest-gmail]
-verify_jwt = false
+verify_jwt = true
 
 [functions.receive-whatsapp]
 verify_jwt = false

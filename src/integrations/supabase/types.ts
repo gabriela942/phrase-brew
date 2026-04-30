@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -49,10 +49,26 @@ export type Database = {
           },
         ]
       }
+      locked_dates: {
+        Row: {
+          data: string
+          travado_em: string | null
+        }
+        Insert: {
+          data: string
+          travado_em?: string | null
+        }
+        Update: {
+          data?: string
+          travado_em?: string | null
+        }
+        Relationships: []
+      }
       submissions: {
         Row: {
           brand: string | null
           created_at: string
+          gmail_message_id: string | null
           id: string
           language: string
           market_type: string | null
@@ -75,6 +91,7 @@ export type Database = {
         Insert: {
           brand?: string | null
           created_at?: string
+          gmail_message_id?: string | null
           id?: string
           language?: string
           market_type?: string | null
@@ -97,6 +114,7 @@ export type Database = {
         Update: {
           brand?: string | null
           created_at?: string
+          gmail_message_id?: string | null
           id?: string
           language?: string
           market_type?: string | null
@@ -122,6 +140,7 @@ export type Database = {
         Row: {
           brand: string | null
           category_id: string | null
+          category_slug: string | null
           content: string
           copies_count: number
           created_at: string
@@ -145,6 +164,7 @@ export type Database = {
         Insert: {
           brand?: string | null
           category_id?: string | null
+          category_slug?: string | null
           content: string
           copies_count?: number
           created_at?: string
@@ -168,6 +188,7 @@ export type Database = {
         Update: {
           brand?: string | null
           category_id?: string | null
+          category_slug?: string | null
           content?: string
           copies_count?: number
           created_at?: string
@@ -205,6 +226,66 @@ export type Database = {
           },
         ]
       }
+      templates_new: {
+        Row: {
+          brand: string | null
+          category_slug: string | null
+          content: string | null
+          copies_count: number | null
+          featured: boolean | null
+          id: number
+          language: string | null
+          market_type: string | null
+          persona: string | null
+          published_at: string | null
+          segment: string | null
+          status: string | null
+          tags: string | null
+          template_type: string | null
+          title: string | null
+          tone: string | null
+          variables: Json | null
+        }
+        Insert: {
+          brand?: string | null
+          category_slug?: string | null
+          content?: string | null
+          copies_count?: number | null
+          featured?: boolean | null
+          id?: number
+          language?: string | null
+          market_type?: string | null
+          persona?: string | null
+          published_at?: string | null
+          segment?: string | null
+          status?: string | null
+          tags?: string | null
+          template_type?: string | null
+          title?: string | null
+          tone?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          brand?: string | null
+          category_slug?: string | null
+          content?: string | null
+          copies_count?: number | null
+          featured?: boolean | null
+          id?: number
+          language?: string | null
+          market_type?: string | null
+          persona?: string | null
+          published_at?: string | null
+          segment?: string | null
+          status?: string | null
+          tags?: string | null
+          template_type?: string | null
+          title?: string | null
+          tone?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -239,10 +320,19 @@ export type Database = {
         Args: { template_id: string }
         Returns: undefined
       }
+      increment_template_copies: {
+        Args: { p_template_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "contributor" | "user"
-      submission_status: "new" | "in_review" | "approved" | "rejected"
+      submission_status:
+        | "new"
+        | "in_review"
+        | "approved"
+        | "rejected"
+        | "archived"
       template_status: "published" | "draft" | "archived"
       template_type: "email" | "whatsapp" | "sms" | "push"
       tone_type: "formal" | "casual" | "direct" | "friendly" | "urgent"
@@ -374,7 +464,13 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "contributor", "user"],
-      submission_status: ["new", "in_review", "approved", "rejected"],
+      submission_status: [
+        "new",
+        "in_review",
+        "approved",
+        "rejected",
+        "archived",
+      ],
       template_status: ["published", "draft", "archived"],
       template_type: ["email", "whatsapp", "sms", "push"],
       tone_type: ["formal", "casual", "direct", "friendly", "urgent"],
