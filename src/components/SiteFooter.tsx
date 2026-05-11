@@ -1,8 +1,48 @@
 import { Link } from "react-router-dom";
-import { Mail, MessageCircle, ExternalLink } from "lucide-react";
+import { Mail, MessageCircle, ExternalLink, Instagram, Youtube, Linkedin } from "lucide-react";
 import logo from "@/assets/logo-crm-models.png";
 
 const YEAR = new Date().getFullYear();
+
+// Lucide doesn't ship a TikTok icon — small inline SVG that matches the
+// visual weight of the other lucide icons (24×24, currentColor stroke/fill).
+function TikTokIcon({ className, style }: { className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      style={style}
+      aria-hidden="true"
+    >
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.1z" />
+    </svg>
+  );
+}
+
+const SOCIAL_LINKS = [
+  {
+    name: "Instagram",
+    href: "https://www.instagram.com/gabrielahomemmello",
+    Icon: Instagram,
+  },
+  {
+    name: "YouTube",
+    href: "https://www.youtube.com/@gabrielahomemmello",
+    Icon: Youtube,
+  },
+  {
+    name: "TikTok",
+    href: "https://www.tiktok.com/@gabrielahomemmello",
+    Icon: TikTokIcon,
+  },
+  {
+    name: "LinkedIn",
+    href: "https://www.linkedin.com/in/gabriela-homem-de-mello/",
+    Icon: Linkedin,
+  },
+] as const;
 
 const NAV = [
   {
@@ -137,8 +177,35 @@ export function SiteFooter() {
           </div>
         </div>
 
+        {/* Social — Gabriela Homem de Mello */}
+        <div className="pt-8 border-t border-border/40 flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/60 mb-1">
+              Acompanhe Gabriela Homem de Mello
+            </p>
+            <p className="text-[12.5px] text-muted-foreground leading-relaxed">
+              Conteúdo sobre CRM, marketing e implementação.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {SOCIAL_LINKS.map(({ name, href, Icon }) => (
+              <a
+                key={name}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`${name} de Gabriela Homem de Mello`}
+                title={name}
+                className="w-9 h-9 rounded-xl bg-muted/60 border border-border/50 flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/30 hover:bg-primary/5 transition-all"
+              >
+                <Icon style={{ width: "16px", height: "16px" }} />
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* Bottom bar */}
-        <div className="pt-8 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="pt-6 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11.5px] text-muted-foreground/50 text-center sm:text-left">
             © {YEAR} CRM Models. Todos os direitos reservados.
           </p>
