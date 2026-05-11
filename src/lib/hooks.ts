@@ -217,14 +217,12 @@ export async function incrementDownloadCount(templateId: string) {
 }
 
 // ─── Contributors leaderboard ─────────────────────────────────────────────────
-// Aggregates **published** templates by the person who SENT the submission to
-// the library — i.e. `submissions.raw_from`, NOT `templates.brand` (which is
-// the original campaign sender, e.g. "Guava", "Vans"). The leaderboard
-// recognizes the community member who forwarded/uploaded the email, regardless
-// of which brand the campaign came from.
-//
-// `raw_from` typical format: `"Full Name" <email@host.tld>` — we extract the
-// display name. When only an email is present, we fall back to the local part.
+// Counts **published** templates per contributor, where "contributor" is the
+// person who SENT the original submission (`submissions.raw_from`), NOT the
+// brand of the campaign (e.g. "Guava", "Vans"). Backed by the
+// `get_top_contributors` RPC because RLS on `submissions` blocks anon SELECT
+// — the function runs SECURITY DEFINER and returns only aggregated,
+// non-sensitive fields.
 
 export interface ContributorEntry {
   name: string;
@@ -232,64 +230,26 @@ export interface ContributorEntry {
   lastPublishedAt: string | null;
 }
 
-const extractContributorName = (rawFrom: string | null | undefined): string => {
-  if (!rawFrom) return "";
-  const nameMatch = rawFrom.match(/^"?([^"<]+)"?\s*</);
-  if (nameMatch) return nameMatch[1].trim();
-  const emailMatch = rawFrom.match(/([^@\s]+)@/);
-  return emailMatch ? emailMatch[1].trim() : rawFrom.trim();
-};
-
 export function useTopContributors(limit = 3) {
   return useQuery({
     queryKey: ["contributors", "leaderboard", limit],
     queryFn: async (): Promise<ContributorEntry[]> => {
-      // Join templates → submissions to read the contributor's raw_from
-      const { data, error } = await supabase
-        .from("templates")
-        .select("published_at, submissions!inner(raw_from)")
-        .eq("status", "published");
+      const { data, error } = await supabase.rpc("get_top_contributors", {
+        limit_count: limit,
+      });
 
       if (error) throw error;
       if (!data) return [];
 
-      const buckets = new Map<string, ContributorEntry>();
-      for (const row of data as Array<{
-        published_at: string | null;
-        submissions: { raw_from: string | null } | null;
-      }>) {
-        const rawFrom = row.submissions?.raw_from ?? "";
-        const name = extractContributorName(rawFrom);
-        if (!name) continue;
-        // Normalize for grouping (case-insensitive, collapse whitespace) but
-        // keep the original casing for display from the first occurrence.
-        const key = name.toLowerCase().replace(/\s+/g, " ");
-        const existing = buckets.get(key);
-        if (existing) {
-          existing.published += 1;
-          if (
-            row.published_at &&
-            (!existing.lastPublishedAt || row.published_at > existing.lastPublishedAt)
-          ) {
-            existing.lastPublishedAt = row.published_at;
-          }
-        } else {
-          buckets.set(key, {
-            name,
-            published: 1,
-            lastPublishedAt: row.published_at ?? null,
-          });
-        }
-      }
-
-      const sorted = Array.from(buckets.values()).sort((a, b) => {
-        if (b.published !== a.published) return b.published - a.published;
-        const bd = b.lastPublishedAt ?? "";
-        const ad = a.lastPublishedAt ?? "";
-        return bd.localeCompare(ad);
-      });
-
-      return sorted.slice(0, limit);
+      return (data as Array<{
+        name: string;
+        published: number;
+        last_published_at: string | null;
+      }>).map((row) => ({
+        name: row.name,
+        published: Number(row.published),
+        lastPublishedAt: row.last_published_at,
+      }));
     },
   });
 }

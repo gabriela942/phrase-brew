@@ -315,6 +315,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_top_contributors: {
+        Args: { limit_count?: number }
+        Returns: {
+          last_published_at: string
+          name: string
+          published: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
