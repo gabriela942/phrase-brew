@@ -5,8 +5,8 @@ import { TemplateCard } from "@/components/TemplateCard";
 import { ActiveFilterChips } from "@/components/ActiveFilterChips";
 import { TemplatesSection } from "@/components/TemplatesSection";
 import { SiteFooter } from "@/components/SiteFooter";
-import { RotatingHeroText } from "@/components/RotatingHeroText";
 import { ContributeSection } from "@/components/ContributeSection";
+import { ContributorsLeaderboardSection } from "@/components/ContributorsLeaderboardSection";
 import { usePublishedTemplates } from "@/lib/hooks";
 import { useFilters } from "@/layouts/DiscoveryLayout";
 import { Layers, ChevronLeft, ChevronRight } from "lucide-react";
@@ -92,51 +92,12 @@ const Index = () => {
 
   return (
     <>
-      {/* ── Hero: badge + headline + subheadline ─────────────────────────── */}
-      <section className="container pt-10 pb-6">
-        <div className="text-center max-w-[640px] mx-auto space-y-3.5">
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-          >
-            <RotatingHeroText />
-          </motion.div>
-
-          <motion.h1
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.45, ease: "easeOut" }}
-            className="font-display font-bold tracking-tight leading-[1.1]"
-            style={{ fontSize: "clamp(1.875rem, 5vw, 3rem)" }}
-          >
-            Templates de CRM{" "}
-            <span className="text-gradient-hero">prontos para usar</span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-            className="text-[15px] text-muted-foreground leading-relaxed"
-          >
-            Encontre, filtre e copie modelos de{" "}
-            <strong className="text-foreground/70 font-medium">Email</strong>,{" "}
-            <strong className="text-foreground/70 font-medium">WhatsApp</strong>,{" "}
-            <strong className="text-foreground/70 font-medium">SMS</strong> e{" "}
-            <strong className="text-foreground/70 font-medium">Push</strong> em
-            segundos.
-          </motion.p>
-        </div>
-      </section>
-
-      {/* ── Hero Carousel ─────────────────────────────────────────────────── */}
+      {/* ── Hero Carousel — primeiro bloco visual da home ────────────────── */}
       <motion.section
-        initial={{ opacity: 0, y: 18 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.28, duration: 0.5, ease: "easeOut" }}
-        className="container pb-8"
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="container pt-6 pb-8"
       >
         <HeroCarousel />
       </motion.section>
@@ -209,6 +170,8 @@ const Index = () => {
                       content={t.content}
                       template_type={t.template_type}
                       copies_count={t.copies_count}
+                      views_count={t.views_count}
+                      downloads_count={t.downloads_count}
                       tags={t.tags}
                       brand={t.brand}
                       market_type={t.market_type}
@@ -307,6 +270,9 @@ const Index = () => {
 
       {/* ── How to contribute ─────────────────────────────────────────────── */}
       <ContributeSection ref={contributeSectionRef} />
+
+      {/* ── Top contributors leaderboard ──────────────────────────────────── */}
+      <ContributorsLeaderboardSection />
 
       <SiteFooter />
     </>

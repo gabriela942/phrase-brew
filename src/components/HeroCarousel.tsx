@@ -8,8 +8,14 @@ import {
   Layers,
   MessageSquare,
   ArrowRight,
+  Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface SlideCta {
+  label: string;
+  href: string;
+}
 
 interface Slide {
   id: string;
@@ -19,12 +25,29 @@ interface Slide {
   description: string;
   cta: string;
   href: string;
+  /** Optional secondary CTA — rendered as outline button next to the primary one */
+  secondaryCta?: SlideCta;
   gradient: string;
   glowGradient: string;
   icon: React.ElementType;
 }
 
 const SLIDES: Slide[] = [
+  {
+    id: "parceiros-consultoria",
+    badge: "Benefício exclusivo",
+    title: "Parceria + Consultoria",
+    headline: "Contrate uma ferramenta parceira e ganhe uma consultoria de implementação",
+    description:
+      "Escolha uma ferramenta recomendada pela comunidade e receba apoio estratégico para implementar seu CRM com mais velocidade, clareza e resultado.",
+    cta: "Conhecer ferramentas parceiras",
+    href: "#parceiros",
+    secondaryCta: { label: "Quero minha consultoria", href: "#consultoria" },
+    gradient: "linear-gradient(135deg, #4338ca 0%, #7c3aed 50%, #db2777 100%)",
+    glowGradient:
+      "radial-gradient(circle at 75% 50%, rgba(244,114,182,0.22) 0%, transparent 55%)",
+    icon: Handshake,
+  },
   {
     id: "cursos",
     badge: "Formação",
@@ -188,7 +211,7 @@ export function HeroCarousel() {
                 {slide.description}
               </p>
 
-              <div className="pt-1">
+              <div className="pt-1 flex flex-wrap items-center gap-2">
                 <a
                   href={slide.href}
                   target={isExternal ? "_blank" : undefined}
@@ -198,6 +221,19 @@ export function HeroCarousel() {
                   {slide.cta}
                   <ArrowRight style={{ width: "13px", height: "13px" }} />
                 </a>
+                {slide.secondaryCta && (() => {
+                  const isSecondaryExternal = !slide.secondaryCta.href.startsWith("#");
+                  return (
+                    <a
+                      href={slide.secondaryCta.href}
+                      target={isSecondaryExternal ? "_blank" : undefined}
+                      rel={isSecondaryExternal ? "noopener noreferrer" : undefined}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 text-white border border-white/30 rounded-xl font-semibold text-sm hover:bg-white/20 backdrop-blur-sm transition-all duration-200"
+                    >
+                      {slide.secondaryCta.label}
+                    </a>
+                  );
+                })()}
               </div>
             </div>
 
