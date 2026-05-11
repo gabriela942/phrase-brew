@@ -145,6 +145,7 @@ export type Database = {
           copies_count: number
           created_at: string
           created_by: string | null
+          downloads_count: number
           featured: boolean
           id: string
           language: string
@@ -160,6 +161,7 @@ export type Database = {
           tone: Database["public"]["Enums"]["tone_type"] | null
           updated_at: string
           variables: string[] | null
+          views_count: number
         }
         Insert: {
           brand?: string | null
@@ -169,6 +171,7 @@ export type Database = {
           copies_count?: number
           created_at?: string
           created_by?: string | null
+          downloads_count?: number
           featured?: boolean
           id?: string
           language?: string
@@ -184,6 +187,7 @@ export type Database = {
           tone?: Database["public"]["Enums"]["tone_type"] | null
           updated_at?: string
           variables?: string[] | null
+          views_count?: number
         }
         Update: {
           brand?: string | null
@@ -193,6 +197,7 @@ export type Database = {
           copies_count?: number
           created_at?: string
           created_by?: string | null
+          downloads_count?: number
           featured?: boolean
           id?: string
           language?: string
@@ -208,6 +213,7 @@ export type Database = {
           tone?: Database["public"]["Enums"]["tone_type"] | null
           updated_at?: string
           variables?: string[] | null
+          views_count?: number
         }
         Relationships: [
           {
@@ -320,8 +326,16 @@ export type Database = {
         Args: { template_id: string }
         Returns: undefined
       }
+      increment_download_count: {
+        Args: { template_id: string }
+        Returns: undefined
+      }
       increment_template_copies: {
         Args: { p_template_id: string }
+        Returns: undefined
+      }
+      increment_view_count: {
+        Args: { template_id: string }
         Returns: undefined
       }
     }

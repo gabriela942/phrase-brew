@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, Copy as CopyIcon, Check, Info, ArrowLeft, ArrowRight } from "lucide-react";
+import { Heart, Copy as CopyIcon, Check, Info, ArrowLeft, ArrowRight, Eye, Download } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { TypeBadge } from "@/components/TypeBadge";
 import { useOptimisticLike } from "@/hooks/useOptimisticLike";
 import { useCopyTemplate } from "@/hooks/useCopyTemplate";
@@ -14,6 +15,8 @@ interface TemplateCardProps {
   content: string;
   template_type: "email" | "whatsapp" | "sms" | "push";
   copies_count: number;
+  views_count?: number;
+  downloads_count?: number;
   tags?: string[] | null;
   brand?: string | null;
   market_type?: string | null;
@@ -50,7 +53,28 @@ function summarize(content: string, max = 140): string {
   return stripped.slice(0, max).replace(/\s+\S*$/, "") + "…";
 }
 
-// ─── Shared action buttons ────────────────────────────────────────────────────
+// ─── Shared metric / action components ────────────────────────────────────────
+
+function MetricCount({
+  icon: Icon,
+  count,
+  ariaLabel,
+}: {
+  icon: LucideIcon;
+  count: number;
+  ariaLabel: string;
+}) {
+  return (
+    <span
+      aria-label={`${count} ${ariaLabel}`}
+      title={`${count} ${ariaLabel}`}
+      className="flex items-center gap-1 h-7 px-1.5 text-[12px] text-muted-foreground/80 select-none"
+    >
+      <Icon className="h-3.5 w-3.5" />
+      <span className="tabular-nums">{count}</span>
+    </span>
+  );
+}
 
 function LikeButton({
   liked,
@@ -141,6 +165,8 @@ function CardFront({
   brand,
   categories,
   formattedDate,
+  viewsCount,
+  downloadsCount,
   liked,
   likesCount,
   copied,
@@ -154,6 +180,8 @@ function CardFront({
   brand?: string | null;
   categories?: TemplateCardProps["categories"];
   formattedDate: string | null;
+  viewsCount: number;
+  downloadsCount: number;
   liked: boolean;
   likesCount: number;
   copied: boolean;
@@ -237,11 +265,13 @@ function CardFront({
         </h3>
 
         {/* Actions row */}
-        <div className="flex items-center justify-between gap-2 mt-auto pt-2.5 border-t border-border/40">
-          <span className="text-[11px] text-muted-foreground/70 tabular-nums">
+        <div className="flex items-center justify-between gap-1 mt-auto pt-2.5 border-t border-border/40">
+          <span className="text-[11px] text-muted-foreground/70 tabular-nums truncate hidden sm:inline">
             {formattedDate ?? " "}
           </span>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 ml-auto">
+            <MetricCount icon={Eye} count={viewsCount} ariaLabel="visualizações" />
+            <MetricCount icon={Download} count={downloadsCount} ariaLabel="downloads" />
             <LikeButton liked={liked} count={likesCount} onLike={onLike} />
             <CopyButton copied={copied} onCopy={onCopy} />
           </div>
@@ -263,6 +293,8 @@ function CardBack({
   categories,
   tags,
   formattedDate,
+  viewsCount,
+  downloadsCount,
   liked,
   likesCount,
   copied,
@@ -279,6 +311,8 @@ function CardBack({
   categories?: TemplateCardProps["categories"];
   tags?: string[] | null;
   formattedDate: string | null;
+  viewsCount: number;
+  downloadsCount: number;
   liked: boolean;
   likesCount: number;
   copied: boolean;
@@ -370,9 +404,13 @@ function CardBack({
       </div>
 
       {/* Sticky actions */}
-      <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-t border-border/40 bg-card shrink-0">
-        <LikeButton liked={liked} count={likesCount} onLike={onLike} size="md" />
-        <CopyButton copied={copied} onCopy={onCopy} label="Copiar template" size="md" />
+      <div className="flex items-center justify-between gap-1 px-4 py-2.5 border-t border-border/40 bg-card shrink-0">
+        <div className="flex items-center gap-0.5">
+          <MetricCount icon={Eye} count={viewsCount} ariaLabel="visualizações" />
+          <MetricCount icon={Download} count={downloadsCount} ariaLabel="downloads" />
+          <LikeButton liked={liked} count={likesCount} onLike={onLike} />
+        </div>
+        <CopyButton copied={copied} onCopy={onCopy} label="Copiar" size="md" />
       </div>
     </div>
   );
@@ -396,6 +434,8 @@ export function TemplateCard(props: TemplateCardProps) {
   const { copied, copy } = useCopyTemplate(props.id, props.content);
 
   const formattedDate = formatDate(props.published_at);
+  const viewsCount = props.views_count ?? 0;
+  const downloadsCount = props.downloads_count ?? 0;
 
   const onLike = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -431,6 +471,8 @@ export function TemplateCard(props: TemplateCardProps) {
             brand={props.brand}
             categories={props.categories}
             formattedDate={formattedDate}
+            viewsCount={viewsCount}
+            downloadsCount={downloadsCount}
             liked={liked}
             likesCount={count}
             copied={copied}
@@ -452,6 +494,8 @@ export function TemplateCard(props: TemplateCardProps) {
             categories={props.categories}
             tags={props.tags}
             formattedDate={formattedDate}
+            viewsCount={viewsCount}
+            downloadsCount={downloadsCount}
             liked={liked}
             likesCount={count}
             copied={copied}

@@ -1,13 +1,19 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTemplate, useCategories, incrementCopyCount } from "@/lib/hooks";
+import {
+  useTemplate,
+  useCategories,
+  incrementCopyCount,
+  incrementViewCount,
+  incrementDownloadCount,
+} from "@/lib/hooks";
 import { TypeBadge } from "@/components/TypeBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil, Trash2, FileText, Heart, Check } from "lucide-react";
+import { ArrowLeft, Copy, Calendar, Tag, Download, Pencil, Trash2, FileText, Heart, Check, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -42,6 +48,16 @@ const TemplateDetail = () => {
     id ?? "",
     template?.copies_count ?? 0
   );
+
+  // View tracking — fire once per mount when the template loads.
+  // The ref guards against React StrictMode's double-effect in dev.
+  const viewedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (template?.id && viewedRef.current !== template.id) {
+      viewedRef.current = template.id;
+      void incrementViewCount(template.id);
+    }
+  }, [template?.id]);
 
   const isHtml = template?.content ? /<[^>]+>/.test(template.content) : false;
   const isImage = template?.content ? isImageUrl(template.content) : false;
@@ -205,6 +221,7 @@ const TemplateDetail = () => {
 </html>`;
     downloadFile(`${safeFilename}.html`, html, "text/html;charset=utf-8");
     toast.success("HTML baixado!");
+    void incrementDownloadCount(template.id);
   };
 
   const handleDownloadTxt = () => {
@@ -212,6 +229,7 @@ const TemplateDetail = () => {
     const text = isHtml ? stripHtmlToText(template.content) : template.content;
     downloadFile(`${safeFilename}.txt`, text, "text/plain;charset=utf-8");
     toast.success("TXT baixado!");
+    void incrementDownloadCount(template.id);
   };
 
   if (isLoading) {
@@ -367,6 +385,12 @@ const TemplateDetail = () => {
             )}
 
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground pt-4 border-t">
+              <span className="flex items-center gap-1">
+                <Eye className="h-3.5 w-3.5" /> {template.views_count} visualizações
+              </span>
+              <span className="flex items-center gap-1">
+                <Download className="h-3.5 w-3.5" /> {template.downloads_count} downloads
+              </span>
               <span className="flex items-center gap-1">
                 <Copy className="h-3.5 w-3.5" /> {template.copies_count} cópias
               </span>
