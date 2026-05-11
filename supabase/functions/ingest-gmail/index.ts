@@ -6,9 +6,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Default Gmail query: catches native Promotions + forwarded emails (Fwd/Fw/Enc)
-// in the inbox over the last 30 days. Override via GMAIL_QUERY secret.
-const DEFAULT_QUERY = "(category:promotions OR subject:(Fwd OR Fw OR Enc)) in:inbox newer_than:30d";
+// Default Gmail query: catches Promotions, any email with a List-Unsubscribe
+// header (newsletters / marketing), or forwarded emails. Looks in the inbox
+// over the last 30 days. Override via the GMAIL_QUERY secret.
+const DEFAULT_QUERY = "(category:promotions OR has:list OR subject:(Fwd OR Fw OR Enc)) in:inbox newer_than:30d";
 
 async function getAccessToken(): Promise<string> {
   const clientId = Deno.env.get("GMAIL_CLIENT_ID")!;
@@ -231,37 +232,47 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: "Missing Authorization" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  const userClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  });
 
-  const { data: { user }, error: userError } = await userClient.auth.getUser();
-  if (userError || !user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Two auth paths:
+  //  1) x-cron-secret matches CRON_SECRET — pg_cron / scheduled invocation
+  //  2) Authorization JWT belonging to an admin user — manual / future UI
+  const cronSecret = Deno.env.get("CRON_SECRET");
+  const providedCronSecret = req.headers.get("x-cron-secret");
+  const isCronCaller = !!cronSecret && providedCronSecret === cronSecret;
 
-  const { data: isAdmin, error: roleError } = await userClient.rpc("has_role", {
-    _user_id: user.id,
-    _role: "admin",
-  });
-  if (roleError || !isAdmin) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
-      status: 403,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+  if (!isCronCaller) {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
     });
+
+    const { data: { user }, error: userError } = await userClient.auth.getUser();
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: isAdmin, error: roleError } = await userClient.rpc("has_role", {
+      _user_id: user.id,
+      _role: "admin",
+    });
+    if (roleError || !isAdmin) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   const log: Array<Record<string, unknown>> = [];
@@ -296,9 +307,10 @@ Deno.serve(async (req) => {
     const messages: Array<{ id: string }> = listData.messages ?? [];
     log.push({ step: "list", count: messages.length, ids: messages.map((m) => m.id) });
 
-    const stats = {
+    const stats: Record<string, number> = {
       total: messages.length,
       skipped_existing: 0,
+      skipped_non_marketing: 0,
       ingested_marketing: 0,
       ingested_pending: 0,
       template_published: 0,
@@ -346,7 +358,23 @@ Deno.serve(async (req) => {
       const guessed = guessFieldsFromContent(textForAnalysis, cleanedTitle);
 
       const classification = classifyMarketing(fullMsg, rawSubject);
-      const status = classification.marketing ? "approved" : "new";
+
+      // Skip non-marketing emails entirely. The Inbox tab is gone, so we
+      // don't want admin-quality noise (test emails, security alerts, plain
+      // personal mail) cluttering the public library. Only true marketing
+      // (CATEGORY_PROMOTIONS, List-Unsubscribe header, or forwards) survives.
+      if (!classification.marketing) {
+        log.push({
+          msg: msg.id,
+          action: "skip_non_marketing",
+          subject: rawSubject,
+          reason: classification.reason,
+        });
+        stats.skipped_non_marketing = (stats.skipped_non_marketing ?? 0) + 1;
+        continue;
+      }
+
+      const status = "approved";
 
       // 1) Insert the submission
       const { data: inserted, error: insertError } = await supabase
@@ -377,33 +405,30 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // 2) If marketing: also publish a clean template (auto-publish flow)
-      if (classification.marketing) {
-        const category_id = guessCategoryFromContent(textForAnalysis, cleanedTitle, categories);
-        const { error: tErr } = await supabase.from("templates").insert({
-          title: cleanedTitle || brand || "email",
-          template_type: "email",
-          content: cleanContent,
-          category_id,
-          tags: guessed.tags,
-          tone: guessed.tone as "formal" | "casual" | "direct" | "friendly" | "urgent",
-          persona: guessed.persona || null,
-          variables: guessed.variables,
-          brand,
-          market_type: guessed.market_type,
-          submission_id: inserted.id,
-          status: "published",
-          published_at: new Date().toISOString(),
-        });
-        if (tErr) {
-          log.push({ msg: msg.id, action: "template_error", error: tErr.message });
-        } else {
-          stats.template_published++;
-        }
-        stats.ingested_marketing++;
+      // 2) Always publish a clean template (auto-publish for everything)
+      const category_id = guessCategoryFromContent(textForAnalysis, cleanedTitle, categories);
+      const { error: tErr } = await supabase.from("templates").insert({
+        title: cleanedTitle || brand || "email",
+        template_type: "email",
+        content: cleanContent,
+        category_id,
+        tags: guessed.tags,
+        tone: guessed.tone as "formal" | "casual" | "direct" | "friendly" | "urgent",
+        persona: guessed.persona || null,
+        variables: guessed.variables,
+        brand,
+        market_type: guessed.market_type,
+        submission_id: inserted.id,
+        status: "published",
+        published_at: new Date().toISOString(),
+      });
+      if (tErr) {
+        log.push({ msg: msg.id, action: "template_error", error: tErr.message });
       } else {
-        stats.ingested_pending++;
+        stats.template_published++;
       }
+      if (classification.marketing) stats.ingested_marketing++;
+      else stats.ingested_pending++;
 
       log.push({
         msg: msg.id,

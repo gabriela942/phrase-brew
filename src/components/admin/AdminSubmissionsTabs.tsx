@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Archive, CheckCircle2, Inbox, XCircle } from "lucide-react";
+import { Archive, CheckCircle2, XCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSubmissionCounts, type SubmissionCounts } from "@/hooks/useSubmissionCounts";
@@ -11,7 +11,6 @@ const tabs: ReadonlyArray<{
   end: boolean;
   countKey: keyof SubmissionCounts;
 }> = [
-  { to: "/admin", label: "Inbox", icon: Inbox, end: true, countKey: "inbox" },
   { to: "/admin/approved", label: "Aprovados", icon: CheckCircle2, end: false, countKey: "approved" },
   { to: "/admin/rejected", label: "Reprovados", icon: XCircle, end: false, countKey: "rejected" },
   { to: "/admin/archived", label: "Arquivados", icon: Archive, end: false, countKey: "archived" },

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { DiscoveryLayout } from "./layouts/DiscoveryLayout";
 import { TemplateDetailLayout } from "./layouts/TemplateDetailLayout";
@@ -10,7 +10,6 @@ import { AdminLayout } from "./layouts/AdminLayout";
 import Index from "./pages/Index";
 import TemplateDetail from "./pages/TemplateDetail";
 import SubmitTemplate from "./pages/SubmitTemplate";
-import Admin from "./pages/Admin";
 import AdminApproved from "./pages/AdminApproved";
 import AdminRejected from "./pages/AdminRejected";
 import AdminArchived from "./pages/AdminArchived";
@@ -41,7 +40,7 @@ const App = () => (
 
             {/* Admin shell — operations header + auth gate */}
             <Route element={<AdminLayout />}>
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin" element={<Navigate to="/admin/approved" replace />} />
               <Route path="/admin/approved" element={<AdminApproved />} />
               <Route path="/admin/rejected" element={<AdminRejected />} />
               <Route path="/admin/archived" element={<AdminArchived />} />
